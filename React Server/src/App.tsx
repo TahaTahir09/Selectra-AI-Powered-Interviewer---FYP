@@ -3,16 +3,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import CandidateSignup from "./pages/CandidateSignup";
-import CandidateLogin from "./pages/CandidateLogin";
-import CVUpload from "./pages/CVUpload";
-import AIInterview from "./pages/AIInterview";
-import InterviewComplete from "./pages/InterviewComplete";
-import OrganizationLanding from "./pages/OrganizationLanding";
-import OrganizationDashboard from "./pages/OrganizationDashboard";
-import OrganizationSignup from "./pages/OrganizationSignup";
-import OrganizationLogin from "./pages/OrganizationLogin";
+import Landing from "./pages/Landing";
+import OrgRegister from "./pages/org/Register";
+import OrgLogin from "./pages/org/Login";
+import OrgDashboard from "./pages/org/Dashboard";
+import PostJob from "./pages/org/PostJob";
+import CandidateLanding from "./pages/candidate/Landing";
+import CandidateRegister from "./pages/candidate/Register";
+import CandidateLogin from "./pages/candidate/Login";
+import CandidateDashboard from "./pages/candidate/Dashboard";
+import Interview from "./pages/candidate/Interview";
+import Result from "./pages/candidate/Result";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,17 +25,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/candidate-signup" element={<CandidateSignup />} />
-          <Route path="/candidate-login" element={<CandidateLogin />} />
-          <Route path="/cv-upload" element={<CVUpload />} />
-          <Route path="/interview" element={<AIInterview />} />
-          <Route path="/interview-complete" element={<InterviewComplete />} />
-          <Route path="/organization-signup" element={<OrganizationSignup />} />
-          <Route path="/organization-login" element={<OrganizationLogin />} />
-          <Route path="/organization-landing" element={<OrganizationLanding />} />
-          <Route path="/organization-dashboard" element={<OrganizationDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/org/register" element={<OrgRegister />} />
+          <Route path="/org/login" element={<OrgLogin />} />
+          <Route path="/org/dashboard" element={<OrgDashboard />} />
+          <Route path="/org/post-job" element={<PostJob />} />
+          <Route path="/candidate" element={<CandidateLanding />} />
+          <Route path="/candidate/register" element={<CandidateRegister />} />
+          <Route path="/candidate/login" element={<CandidateLogin />} />
+          <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
+          <Route path="/interview/:id" element={<Interview />} />
+          <Route path="/interview/result/:id" element={<Result />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
