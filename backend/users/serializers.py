@@ -73,16 +73,31 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         Create user with hashed password.
         """
         validated_data.pop('password2')
+        user_type = validated_data.get('user_type', 'candidate')
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
-            user_type=validated_data.get('user_type', 'candidate')
+            user_type=user_type
         )
+        
         # Create associated profile
         Profile.objects.create(user=user)
+        
+        # Create OrganizationDetails if user is an organization
+        if user_type == 'organization':
+            from core.models import OrganizationDetails
+            OrganizationDetails.objects.create(
+                user=user,
+                organization_name=validated_data.get('first_name', user.username),
+                address='',  # Can be updated later
+                contact_number='',
+                contact_person=user.username
+            )
+        
         return user
 
 

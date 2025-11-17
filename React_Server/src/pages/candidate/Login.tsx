@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FormInput from "@/components/FormInput";
@@ -8,11 +10,25 @@ import bgPattern from "@/assets/bg-pattern.jpg";
 
 const CandidateLogin = () => {
   const navigate = useNavigate();
+  const { login, loading } = useAuth();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("candidateName", "John Doe");
-    navigate("/candidate/dashboard");
+    try {
+      await login(username, password);
+      
+      // Check if user was trying to apply for a job
+      const applyJobId = localStorage.getItem('applyJobId');
+      if (applyJobId) {
+        navigate(`/candidate/apply/${applyJobId}`);
+      } else {
+        navigate("/candidate/dashboard");
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
   };
 
   return (
@@ -28,11 +44,28 @@ const CandidateLogin = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <FormInput label="Email" type="email" placeholder="your@email.com" />
-              <FormInput label="Password" type="password" placeholder="Enter password" />
+              <FormInput 
+                label="Username" 
+                placeholder="Enter username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              <FormInput 
+                label="Password" 
+                type="password" 
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-accent to-accent/80">
-                Login
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-accent to-accent/80"
+                disabled={loading}
+              >
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
 
               <Button 

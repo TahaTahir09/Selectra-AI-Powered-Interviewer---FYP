@@ -62,7 +62,7 @@ class JobPost(models.Model):
     employment_type = models.CharField(max_length=50, blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     salary_range = models.CharField(max_length=100, blank=True, null=True)
-    application_link = models.URLField()
+    application_link = models.URLField(blank=True, null=True)
     pre_assessment_questions = ArrayField(
         models.TextField(),
         default=list,
@@ -112,6 +112,14 @@ class Application(models.Model):
     )
     candidate_name = models.CharField(max_length=255, default='Unknown')
     candidate_email = models.EmailField(default='no-reply@example.com')
+    candidate_phone = models.CharField(max_length=20, blank=True, null=True)
+    candidate_location = models.CharField(max_length=255, blank=True, null=True)
+    candidate_linkedin = models.URLField(blank=True, null=True)
+    candidate_github = models.URLField(blank=True, null=True)
+    candidate_skills = models.JSONField(default=list, blank=True)
+    candidate_education = models.JSONField(default=list, blank=True)
+    candidate_experience = models.JSONField(default=list, blank=True)
+    years_of_experience = models.CharField(max_length=50, blank=True, null=True)
     cv_url = models.FileField(upload_to='cvs/', blank=True, null=True)
     status = models.CharField(
         max_length=20,

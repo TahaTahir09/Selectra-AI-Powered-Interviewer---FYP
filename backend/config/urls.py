@@ -15,8 +15,31 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.http import JsonResponse
+
+def api_root(request):
+    return JsonResponse({
+        'message': 'Selectra AI Interview API',
+        'version': '1.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'auth': '/api/users/auth/',
+            'jobs': '/api/jobs/',
+            'applications': '/api/applications/',
+            'interviews': '/api/interviews/',
+        }
+    })
 
 urlpatterns = [
+    path('', api_root, name='api_root'),
     path('admin/', admin.site.urls),
+    path('api/users/', include('users.urls')),
+    path('api/', include('core.urls')),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

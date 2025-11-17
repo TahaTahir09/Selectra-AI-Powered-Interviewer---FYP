@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FormInput from "@/components/FormInput";
@@ -8,11 +10,18 @@ import bgPattern from "@/assets/bg-pattern.jpg";
 
 const OrgLogin = () => {
   const navigate = useNavigate();
+  const { login, loading } = useAuth();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("orgName", "Acme Corporation");
-    navigate("/org/dashboard");
+    try {
+      await login(username, password);
+      navigate("/org/dashboard");
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
   };
 
   return (
@@ -28,11 +37,28 @@ const OrgLogin = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <FormInput label="Email" type="email" placeholder="company@example.com" />
-              <FormInput label="Password" type="password" placeholder="Enter password" />
+              <FormInput 
+                label="Username" 
+                placeholder="Enter username" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              <FormInput 
+                label="Password" 
+                type="password" 
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-primary/80">
-                Login
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-primary to-primary/80"
+                disabled={loading}
+              >
+                {loading ? 'Logging in...' : 'Login'}
               </Button>
 
               <Button 

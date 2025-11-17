@@ -147,8 +147,21 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = [
-            'job_post', 'candidate_name', 'candidate_email', 'cv_url'
+            'job_post', 'candidate_name', 'candidate_email', 'cv_url',
+            'candidate_phone', 'candidate_location', 'candidate_linkedin',
+            'candidate_github', 'candidate_skills', 'candidate_education',
+            'candidate_experience', 'years_of_experience'
         ]
+        extra_kwargs = {
+            'candidate_phone': {'required': False},
+            'candidate_location': {'required': False},
+            'candidate_linkedin': {'required': False},
+            'candidate_github': {'required': False},
+            'candidate_skills': {'required': False},
+            'candidate_education': {'required': False},
+            'candidate_experience': {'required': False},
+            'years_of_experience': {'required': False},
+        }
     
     def validate_cv_url(self, value):
         """Validate CV file if uploaded."""

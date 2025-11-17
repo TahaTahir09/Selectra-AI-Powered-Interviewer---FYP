@@ -9,6 +9,7 @@ interface FormInputProps {
   multiline?: boolean;
   required?: boolean;
   value?: string;
+  name?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
@@ -19,28 +20,33 @@ const FormInput = ({
   multiline,
   required,
   value,
+  name,
   onChange,
 }: FormInputProps) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor={label} className="text-sm font-medium text-foreground">
+      <Label htmlFor={name || label} className="text-sm font-medium text-foreground">
         {label}
       </Label>
       {multiline ? (
         <Textarea
-          id={label}
+          id={name || label}
+          name={name}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          required={required}
           className="min-h-[100px]"
         />
       ) : (
         <Input
-          id={label}
+          id={name || label}
+          name={name}
           type={type}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          required={required}
         />
       )}
     </div>
