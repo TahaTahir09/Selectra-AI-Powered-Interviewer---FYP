@@ -1,7 +1,12 @@
-Store CVs in ChromaDB for context retrieval
-Generate initial interview questions using RAG + LLM
-Responses of Candidates fetched, must be stored in ChromaDB before asking next question
-Follow-up question generation based on answers
-Answer evaluation 
+Store CVs in ChromaDB for context retrieval - Done
+Generate initial interview questions using RAG + LLM - Done
+Responses of Candidates fetched, must be stored in ChromaDB before asking next question - Not Required
+Follow-up question generation based on answers - Done
+Each Answer evaluation - Done
+Overall Interview evaluation - Done (Final Step)
 
 Yeh hi bs abhi tk baaki m dekh ln ga InShaAllah
+
+
+
+Store complete Interview Chat in DB - To be done by Taha
