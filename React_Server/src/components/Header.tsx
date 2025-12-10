@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Building2, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import selectraLogo from "@/assets/selectra-logo.png";
 
 interface HeaderProps {
   userType?: "organization" | "candidate";
@@ -11,14 +12,9 @@ interface HeaderProps {
 const Header = ({ userType, userName, onLogout }: HeaderProps) => {
   return (
     <header className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            SELECTRA
-          </span>
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <Link to="/" className="flex items-center">
+          <img src={selectraLogo} alt="Selectra" className="h-24" />
         </Link>
 
         <div className="flex items-center gap-4">

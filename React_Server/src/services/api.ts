@@ -185,31 +185,31 @@ export const organizationAPI = {
 // Job Post API
 export const jobAPI = {
   list: async (params?: { search?: string; ordering?: string }) => {
-    const response = await api.get('/jobs/', { params });
+    const response = await api.get('/core/jobs/', { params });
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await api.get(`/jobs/${id}/`);
+    const response = await api.get(`/core/jobs/${id}/`);
     return response.data;
   },
 
   create: async (data: Omit<JobPost, 'id' | 'created_at' | 'application_count'>) => {
-    const response = await api.post('/jobs/', data);
+    const response = await api.post('/core/jobs/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<JobPost>) => {
-    const response = await api.patch(`/jobs/${id}/`, data);
+    const response = await api.patch(`/core/jobs/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await api.delete(`/jobs/${id}/`);
+    await api.delete(`/core/jobs/${id}/`);
   },
 
   getApplications: async (id: number) => {
-    const response = await api.get(`/jobs/${id}/applications/`);
+    const response = await api.get(`/core/jobs/${id}/applications/`);
     return response.data;
   },
 };
@@ -217,17 +217,17 @@ export const jobAPI = {
 // Application API
 export const applicationAPI = {
   list: async () => {
-    const response = await api.get('/applications/');
+    const response = await api.get('/core/applications/');
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await api.get(`/applications/${id}/`);
+    const response = await api.get(`/core/applications/${id}/`);
     return response.data;
   },
 
   create: async (data: FormData) => {
-    const response = await api.post('/applications/', data, {
+    const response = await api.post('/core/applications/', data, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -236,7 +236,7 @@ export const applicationAPI = {
   },
 
   updateStatus: async (id: number, status: string) => {
-    const response = await api.post(`/applications/${id}/update_status/`, { status });
+    const response = await api.post(`/core/applications/${id}/update_status/`, { status });
     return response.data;
   },
 };
@@ -244,22 +244,22 @@ export const applicationAPI = {
 // Interview API
 export const interviewAPI = {
   list: async () => {
-    const response = await api.get('/interviews/');
+    const response = await api.get('/core/interviews/');
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await api.get(`/interviews/${id}/`);
+    const response = await api.get(`/core/interviews/${id}/`);
     return response.data;
   },
 
   create: async (data: Omit<Interview, 'id'>) => {
-    const response = await api.post('/interviews/', data);
+    const response = await api.post('/core/interviews/', data);
     return response.data;
   },
 
   updateStatus: async (id: number, status: string) => {
-    const response = await api.post(`/interviews/${id}/update_status/`, { status });
+    const response = await api.post(`/core/interviews/${id}/update_status/`, { status });
     return response.data;
   },
 };

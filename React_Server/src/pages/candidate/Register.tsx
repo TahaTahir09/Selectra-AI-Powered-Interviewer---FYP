@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FormInput from "@/components/FormInput";
-import bgPattern from "@/assets/bg-pattern.jpg";
 
 const CandidateRegister = () => {
   const navigate = useNavigate();
@@ -51,6 +50,7 @@ const CandidateRegister = () => {
       // Check if user was trying to apply for a job
       const applyJobId = localStorage.getItem('applyJobId');
       if (applyJobId) {
+        localStorage.removeItem('applyJobId'); // Clear after reading
         setTimeout(() => navigate(`/candidate/apply/${applyJobId}`), 2000);
       } else {
         setTimeout(() => navigate("/candidate/login"), 2000);
@@ -61,7 +61,7 @@ const CandidateRegister = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background" style={{ backgroundImage: `url(${bgPattern})`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">

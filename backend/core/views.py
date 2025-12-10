@@ -74,8 +74,11 @@ class JobPostViewSet(viewsets.ModelViewSet):
         return JobPostSerializer
     
     def get_permissions(self):
-        """Allow unauthenticated users to list and retrieve jobs."""
-        if self.action in ['list', 'retrieve']:
+        """
+        Allow unauthenticated users to retrieve individual jobs.
+        Require authentication for listing jobs (so organizations see only their jobs).
+        """
+        if self.action == 'retrieve':
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     
@@ -93,6 +96,22 @@ class JobPostViewSet(viewsets.ModelViewSet):
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:8080')
             job.application_link = f"{frontend_url}/candidate/apply/{job.id}"
             job.save()
+    
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def description(self, request, pk=None):
+        """Get job description for a specific job post."""
+        job_post = self.get_object()
+        return Response({
+            'id': job_post.id,
+            'job_title': job_post.job_title,
+            'job_description': job_post.job_description,
+            'required_skills': job_post.required_skills,
+            'experience_required': job_post.experience_required,
+            'qualification': job_post.qualification,
+            'responsibilities': job_post.responsibilities,
+            'employment_type': job_post.employment_type,
+            'location': job_post.location,
+        })
     
     @action(detail=True, methods=['get'])
     def applications(self, request, pk=None):

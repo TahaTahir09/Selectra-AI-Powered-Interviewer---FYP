@@ -1,0 +1,330 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, Mail, Building2, Phone, Globe, FileText, Loader2, Camera } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/Sidebar";
+import Footer from "@/components/Footer";
+import FormInput from "@/components/FormInput";
+
+const OrgProfile = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [profileImage, setProfileImage] = useState<string>("");
+  const [formData, setFormData] = useState({
+    username: user?.username || "",
+    email: user?.email || "",
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    organization_name: "",
+    address: "",
+    contact_number: "",
+    contact_person: "",
+    website_link: "",
+    company_description: "",
+  });
+
+  const handleLogout = () => {
+    logout();
+    navigate("/org/login");
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Profile picture must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // TODO: Implement API call to update profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully",
+      });
+      setEditing(false);
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+      <Sidebar 
+        userType="organization" 
+        userName={user?.username}
+        userEmail={user?.email}
+        onLogout={handleLogout} 
+      />
+      
+      <div className="flex-1 ml-64 flex flex-col">
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Organization Profile
+              </span>
+            </h1>
+            <p className="text-muted-foreground">Manage your organization information and settings</p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Profile Picture Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Picture</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center">
+                  <div className="relative group">
+                    <Avatar className="h-32 w-32 border-4 border-primary/20">
+                      <AvatarImage src={profileImage} alt={user?.username} />
+                      <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-white text-3xl">
+                        {user?.username?.substring(0, 2).toUpperCase() || "OR"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <Camera className="h-8 w-8 text-white" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
+                    Click to upload new picture
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum size: 5MB
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Info Card */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Quick Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <User className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Username</p>
+                      <p className="font-semibold">{user?.username || "Not set"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Mail className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-semibold">{user?.email || "Not set"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Account Type</p>
+                      <p className="font-semibold capitalize">{user?.user_type || "Organization"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Member Since</p>
+                      <p className="font-semibold">
+                        {user?.date_joined ? new Date(user.date_joined).toLocaleDateString() : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Profile Form */}
+          <Card className="mt-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Profile Details</CardTitle>
+              {!editing && (
+                <Button onClick={() => setEditing(true)} variant="outline">
+                  Edit Profile
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Account Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <User className="h-5 w-5 text-primary" />
+                    Account Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="Email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="First Name"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="Last Name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                  </div>
+                </div>
+
+                {/* Organization Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Organization Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Organization Name"
+                      name="organization_name"
+                      value={formData.organization_name}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="Contact Person"
+                      name="contact_person"
+                      value={formData.contact_person}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="Contact Number"
+                      name="contact_number"
+                      type="tel"
+                      value={formData.contact_number}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <FormInput
+                      label="Website"
+                      name="website_link"
+                      type="url"
+                      value={formData.website_link}
+                      onChange={handleChange}
+                      disabled={!editing}
+                    />
+                    <div className="md:col-span-2">
+                      <FormInput
+                        label="Address"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        disabled={!editing}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <FormInput
+                        label="Company Description"
+                        name="company_description"
+                        value={formData.company_description}
+                        onChange={handleChange}
+                        multiline
+                        disabled={!editing}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {editing && (
+                  <div className="flex gap-4">
+                    <Button
+                      type="submit"
+                      className="bg-gradient-to-r from-primary to-accent"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditing(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        </main>
+
+        <Footer />
+      </div>
+    </div>
+  );
+};
+
+export default OrgProfile;

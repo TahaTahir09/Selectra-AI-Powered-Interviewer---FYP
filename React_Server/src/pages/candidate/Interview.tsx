@@ -1,19 +1,56 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { StopCircle } from "lucide-react";
+import { StopCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { interviewAPI } from "@/services/api";
 import aiAvatar from "@/assets/ai-avatar.jpg";
 
 const Interview = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [interview, setInterview] = useState<any>(null);
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
     { sender: "AI", text: "Hello! Welcome to your AI interview. Let's begin. Tell me about yourself." },
   ]);
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
+
+  useEffect(() => {
+    const fetchInterview = async () => {
+      if (!id) return;
+      
+      try {
+        const interviewData = await interviewAPI.get(parseInt(id));
+        setInterview(interviewData);
+        
+        // If interview has existing conversation data, load it
+        if (interviewData.conversation_log) {
+          try {
+            const parsedMessages = JSON.parse(interviewData.conversation_log);
+            if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+              setMessages(parsedMessages);
+            }
+          } catch (e) {
+            console.error('Failed to parse conversation log:', e);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch interview:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load interview details",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInterview();
+  }, [id, toast]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -28,30 +65,52 @@ const Interview = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const simulateListening = () => {
-    // Simulate AI listening and responding (mock voice interaction)
-    setTimeout(() => {
-      const responses = [
-        "That's interesting! Can you tell me more about your experience with that?",
-        "Great! How would you handle a challenging situation in that role?",
-        "Excellent. What are your key strengths that make you suitable for this position?",
-        "Can you describe a project where you demonstrated leadership?",
-        "What motivates you in your professional career?",
-      ];
-      setMessages((prev) => [
-        ...prev,
-        { sender: "AI", text: responses[Math.floor(Math.random() * responses.length)] },
-      ]);
-    }, 3000);
+  const handleEndInterview = async () => {
+    try {
+      // Update interview status to completed
+      await interviewAPI.updateStatus(parseInt(id!), 'completed');
+      
+      toast({
+        title: "Interview Ended",
+        description: "Your responses have been submitted for evaluation.",
+      });
+      setTimeout(() => navigate(`/interview/result/${id}`), 1500);
+    } catch (error) {
+      console.error('Failed to end interview:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit interview. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEndInterview = () => {
-    toast({
-      title: "Interview Ended",
-      description: "Your responses have been submitted for evaluation.",
-    });
-    setTimeout(() => navigate(`/interview/result/${id}`), 1500);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
+        <div className="text-center text-white">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" />
+          <p>Loading interview...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!interview) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800">
+        <Card className="p-8 text-center">
+          <h3 className="text-xl font-semibold mb-2">Interview Not Found</h3>
+          <p className="text-muted-foreground mb-4">
+            The interview you're looking for doesn't exist or has been removed.
+          </p>
+          <Button onClick={() => navigate('/candidate/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div

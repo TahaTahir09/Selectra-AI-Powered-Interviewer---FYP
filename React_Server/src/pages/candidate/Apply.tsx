@@ -13,7 +13,6 @@ import api from "@/services/api";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FormInput from "@/components/FormInput";
-import bgPattern from "@/assets/bg-pattern.jpg";
 
 const Apply = () => {
   const { id } = useParams();
@@ -354,7 +353,7 @@ const Apply = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background" style={{ backgroundImage: `url(${bgPattern})`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
       <Header userType="candidate" userName={user?.username} />
       
       <main className="flex-1 container mx-auto px-4 py-8">

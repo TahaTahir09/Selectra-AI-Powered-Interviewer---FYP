@@ -1,27 +1,49 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { interviewAPI } from "@/services/api";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import bgPattern from "@/assets/bg-pattern.jpg";
 
 const Result = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  
-  // Mock result data
-  const result = {
-    score: 85,
-    status: "Pass",
-    summary:
-      "Excellent performance! You demonstrated strong communication skills, technical knowledge, and problem-solving abilities. Your responses were clear and well-structured. The hiring team will review your interview and get back to you soon.",
-  };
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchResult = async () => {
+      if (!id) return;
+      
+      try {
+        const interviewData = await interviewAPI.get(parseInt(id));
+        setResult(interviewData);
+      } catch (error) {
+        console.error('Failed to fetch interview result:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load interview results",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResult();
+  }, [id, toast]);
 
   const getStatusIcon = () => {
-    switch (result.status) {
+    const status = result?.status || "Pending";
+    switch (status) {
+      case "completed":
       case "Pass":
         return <CheckCircle className="h-16 w-16 text-green-500" />;
+      case "rejected":
       case "Fail":
         return <XCircle className="h-16 w-16 text-red-500" />;
       default:
@@ -30,9 +52,12 @@ const Result = () => {
   };
 
   const getStatusColor = () => {
-    switch (result.status) {
+    const status = result?.status || "Pending";
+    switch (status) {
+      case "completed":
       case "Pass":
         return "bg-green-100 text-green-800";
+      case "rejected":
       case "Fail":
         return "bg-red-100 text-red-800";
       default:
@@ -40,8 +65,50 @@ const Result = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading interview results...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-2xl w-full">
+            <CardContent className="p-8 text-center">
+              <Clock className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Results Pending</h3>
+              <p className="text-muted-foreground mb-6">
+                Your interview results are being processed. Please check back later.
+              </p>
+              <Button onClick={() => navigate("/candidate/dashboard")}>
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const score = result.evaluation_score || 0;
+  const status = result.status || "Pending";
+  const summary = result.evaluation_summary || "Your interview is being evaluated. Results will be available soon.";
+
   return (
-    <div className="min-h-screen flex flex-col bg-background" style={{ backgroundImage: `url(${bgPattern})`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">
@@ -50,7 +117,7 @@ const Result = () => {
             <div className="flex justify-center mb-4">{getStatusIcon()}</div>
             <CardTitle className="text-3xl mb-2">Interview Results</CardTitle>
             <div className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor()}`}>
-              {result.status}
+              {status}
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -75,20 +142,35 @@ const Result = () => {
                     strokeWidth="8"
                     fill="transparent"
                     strokeDasharray={`${2 * Math.PI * 56}`}
-                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - result.score / 100)}`}
+                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - score / 100)}`}
                     className="text-primary"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-4xl font-bold text-foreground">{result.score}</span>
+                  <span className="text-4xl font-bold text-foreground">{score}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-muted/50 p-6 rounded-lg">
               <h3 className="font-semibold text-foreground mb-2">Summary</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{result.summary}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{summary}</p>
             </div>
+
+            {result.scheduled_time && (
+              <div className="bg-primary/10 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold">Interview Date:</span>{" "}
+                  {new Date(result.scheduled_time).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            )}
 
             <Button
               onClick={() => navigate("/candidate/dashboard")}

@@ -1,19 +1,20 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { jobAPI } from "@/services/api";
-import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import FormInput from "@/components/FormInput";
 import Modal from "@/components/Modal";
-import bgPattern from "@/assets/bg-pattern.jpg";
 
 const PostJob = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [applicationLink, setApplicationLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -102,11 +103,22 @@ const PostJob = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/org/login");
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-background" style={{ backgroundImage: `url(${bgPattern})`, backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
-      <Header userType="organization" userName={user?.username || "Organization"} />
+    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+      <Sidebar 
+        userType="organization" 
+        userName={user?.username}
+        userEmail={user?.email}
+        onLogout={handleLogout} 
+      />
       
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <div className="flex-1 ml-64 flex flex-col">
+        <main className="flex-1 container mx-auto px-4 py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
             <CardTitle className="text-2xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -232,9 +244,10 @@ const PostJob = () => {
             </Button>
           </div>
         </Modal>
-      </main>
+        </main>
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   );
 };
