@@ -208,8 +208,8 @@ const Result = () => {
                   </div>
                 )}
                 {result?.job_fit && (
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">Job Fit</h4>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Job Fit</h4>
                     <p className={`text-lg font-semibold capitalize ${
                       result.job_fit === 'excellent' ? 'text-green-600' :
                       result.job_fit === 'good' ? 'text-blue-600' :
@@ -266,8 +266,8 @@ const Result = () => {
                     >
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
                         msg.role === 'interviewer' 
-                          ? 'bg-purple-500' 
-                          : 'bg-green-500'
+                          ? 'bg-primary' 
+                          : 'bg-orange-500'
                       }`}>
                         {msg.role === 'interviewer' ? (
                           <Bot className="h-4 w-4 text-white" />

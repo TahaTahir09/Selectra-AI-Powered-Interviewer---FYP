@@ -404,10 +404,10 @@ const Interview = () => {
   // Loading state
   if (stage === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-center text-white">
-          <Loader2 className="h-16 w-16 animate-spin mx-auto mb-4 text-purple-400" />
-          <p className="text-xl">Loading Interview...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
+        <div className="text-center">
+          <Loader2 className="h-16 w-16 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-xl text-foreground">Loading Interview...</p>
         </div>
       </div>
     );
@@ -416,7 +416,7 @@ const Interview = () => {
   // Error state
   if (stage === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
         <Card className="max-w-md p-8 text-center">
           <AlertCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
           <h2 className="text-2xl font-bold mb-2">Interview Not Available</h2>
@@ -434,10 +434,10 @@ const Interview = () => {
   // Ready to start state
   if (stage === 'ready') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-        <Card className="max-w-2xl w-full">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white p-4">
+        <Card className="max-w-2xl w-full shadow-lg">
           <CardHeader className="text-center pb-2">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
               <Bot className="h-10 w-10 text-white" />
             </div>
             <CardTitle className="text-3xl font-bold">AI Interview</CardTitle>
@@ -446,9 +446,9 @@ const Interview = () => {
             </p>
           </CardHeader>
           <CardContent className="space-y-6 pt-4">
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-6 space-y-4">
+            <div className="bg-orange-50 dark:bg-slate-800 rounded-lg p-6 space-y-4">
               <h3 className="font-semibold text-lg flex items-center gap-2">
-                <Bot className="h-5 w-5 text-purple-500" />
+                <Bot className="h-5 w-5 text-primary" />
                 Interview Guidelines
               </h3>
               <ul className="space-y-3 text-sm text-muted-foreground">
@@ -476,7 +476,7 @@ const Interview = () => {
                 size="lg" 
                 onClick={handleStartInterview}
                 disabled={isLoadingQuestion}
-                className="px-12 py-6 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                className="px-12 py-6 text-lg bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
               >
                 {isLoadingQuestion ? (
                   <>
@@ -500,14 +500,14 @@ const Interview = () => {
   // Completed state
   if (stage === 'completed') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <Card className="max-w-md p-8 text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
+        <Card className="max-w-md p-8 text-center shadow-lg">
           <CheckCircle className="h-20 w-20 mx-auto mb-4 text-green-500" />
           <h2 className="text-2xl font-bold mb-2">Interview Complete!</h2>
           <p className="text-muted-foreground mb-4">
             Thank you for completing the interview. Your responses have been recorded.
           </p>
-          <Loader2 className="h-6 w-6 animate-spin mx-auto text-purple-500" />
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
           <p className="text-sm text-muted-foreground mt-2">Redirecting to results...</p>
         </Card>
       </div>
@@ -516,17 +516,17 @@ const Interview = () => {
 
   // Main interview UI
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
       {/* Header */}
-      <div className="bg-black/30 backdrop-blur-sm border-b border-white/10 py-4 px-6">
+      <div className="bg-white shadow-md border-b border-border py-4 px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white font-semibold">AI Interview</h2>
-              <p className="text-white/60 text-sm">
+              <h2 className="text-foreground font-semibold">AI Interview</h2>
+              <p className="text-muted-foreground text-sm">
                 {application?.job_post?.job_title || 'Interview'}
               </p>
             </div>
@@ -535,8 +535,8 @@ const Interview = () => {
           <div className="flex items-center gap-6">
             {/* Progress */}
             <div className="text-right">
-              <p className="text-white/60 text-xs">Progress</p>
-              <p className="text-white font-mono">
+              <p className="text-muted-foreground text-xs">Progress</p>
+              <p className="text-foreground font-mono">
                 {questionNumber} / {TOTAL_QUESTIONS}
               </p>
             </div>
@@ -544,8 +544,8 @@ const Interview = () => {
             {/* Timer - only show when answering */}
             {stage === 'answering' && (
               <div className={`text-right ${timeLeft <= 10 ? 'animate-pulse' : ''}`}>
-                <p className="text-white/60 text-xs">Time Left</p>
-                <p className={`font-mono text-xl ${timeLeft <= 10 ? 'text-red-400' : 'text-white'}`}>
+                <p className="text-muted-foreground text-xs">Time Left</p>
+                <p className={`font-mono text-xl ${timeLeft <= 10 ? 'text-red-500' : 'text-foreground'}`}>
                   {formatTime(timeLeft)}
                 </p>
               </div>
@@ -555,7 +555,7 @@ const Interview = () => {
       </div>
       
       {/* Progress bar */}
-      <div className="px-6 py-2 bg-black/20">
+      <div className="px-6 py-2 bg-orange-50">
         <div className="max-w-4xl mx-auto">
           <Progress value={(questionNumber / TOTAL_QUESTIONS) * 100} className="h-2" />
         </div>
@@ -564,7 +564,7 @@ const Interview = () => {
       {/* Main content */}
       <div className="flex-1 max-w-4xl mx-auto w-full p-6 flex flex-col">
         {/* Messages */}
-        <Card className="flex-1 mb-4 bg-white/95 dark:bg-slate-800/95 overflow-hidden flex flex-col">
+        <Card className="flex-1 mb-4 bg-white shadow-md overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((msg, index) => (
               <div
@@ -573,8 +573,8 @@ const Interview = () => {
               >
                 <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
                   msg.role === 'interviewer' 
-                    ? 'bg-gradient-to-br from-purple-500 to-blue-500' 
-                    : 'bg-gradient-to-br from-green-500 to-teal-500'
+                    ? 'bg-gradient-to-br from-primary to-blue-400' 
+                    : 'bg-gradient-to-br from-orange-400 to-orange-500'
                 }`}>
                   {msg.role === 'interviewer' ? (
                     <Bot className="h-5 w-5 text-white" />
@@ -589,7 +589,7 @@ const Interview = () => {
                   <div className={`p-4 rounded-2xl ${
                     msg.role === 'interviewer'
                       ? 'bg-slate-100 dark:bg-slate-700 text-left rounded-tl-none'
-                      : 'bg-purple-500 text-white text-left rounded-tr-none'
+                      : 'bg-primary text-white text-left rounded-tr-none'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
@@ -600,7 +600,7 @@ const Interview = () => {
             {/* Loading indicator for next question */}
             {(isLoadingQuestion || isSubmitting) && stage === 'in_progress' && (
               <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-2xl rounded-tl-none">
@@ -618,7 +618,7 @@ const Interview = () => {
 
         {/* Answer input - only show when answering */}
         {stage === 'answering' && (
-          <Card className="bg-white/95 dark:bg-slate-800/95">
+          <Card className="bg-white shadow-md">
             <CardContent className="p-4">
               <div className="flex gap-3">
                 <Textarea
@@ -635,7 +635,7 @@ const Interview = () => {
                   <Button
                     onClick={handleSubmitAnswer}
                     disabled={isSubmitting}
-                    className="h-full px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    className="h-full px-6 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
