@@ -12,6 +12,8 @@ from datetime import datetime
 import spacy
 from collections import defaultdict
 from openai import OpenAI
+import google.generativeai as genai
+from pathlib import Path
 
 # Load spaCy model for NER
 try:
@@ -79,6 +81,51 @@ class CVParser:
             print(f"Error reading PDF: {e}")
         return text
     
+    def extract_text_from_pdf_with_gemini(self, file_path: str) -> str:
+        """Extract text from PDF using Google Gemini API (supports images, tables, complex layouts)"""
+        try:
+            api_key = os.getenv('GEMINI_API_KEY', '')
+            
+            if not api_key:
+                print("GEMINI_API_KEY not set, falling back to PyPDF2")
+                return self.extract_text_from_pdf(file_path)
+            
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Upload the PDF file
+            print(f"Uploading PDF to Gemini: {file_path}")
+            uploaded_file = genai.upload_file(file_path)
+            print(f"Upload complete: {uploaded_file.name}")
+            
+            # Use Gemini Pro Vision model to extract text
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = """Extract ALL text content from this PDF document. 
+            Include:
+            - All text from every page
+            - Text from tables and structured data
+            - Text embedded in images (if any)
+            - Preserve formatting and structure where possible
+            
+            Return the complete text content."""
+            
+            print("Gemini processing PDF...")
+            response = model.generate_content([uploaded_file, prompt])
+            
+            text = response.text
+            print(f"Extracted {len(text)} characters from PDF using Gemini")
+            
+            # Clean up the uploaded file
+            genai.delete_file(uploaded_file.name)
+            
+            return text
+            
+        except Exception as e:
+            print(f"Gemini PDF extraction failed: {str(e)}")
+            print("Falling back to PyPDF2 extraction")
+            return self.extract_text_from_pdf(file_path)
+    
     def extract_text_from_docx(self, file_path: str) -> str:
         """Extract text from DOCX file"""
         text = ""
@@ -90,10 +137,13 @@ class CVParser:
             print(f"Error reading DOCX: {e}")
         return text
     
-    def extract_text(self, file_path: str) -> str:
+    def extract_text(self, file_path: str, use_gemini: bool = True) -> str:
         """Extract text from CV file (PDF or DOCX)"""
         if file_path.lower().endswith('.pdf'):
-            return self.extract_text_from_pdf(file_path)
+            if use_gemini and os.getenv('GEMINI_API_KEY'):
+                return self.extract_text_from_pdf_with_gemini(file_path)
+            else:
+                return self.extract_text_from_pdf(file_path)
         elif file_path.lower().endswith(('.docx', '.doc')):
             return self.extract_text_from_docx(file_path)
         else:
@@ -432,7 +482,7 @@ class CVParser:
         if not text:
             return {'error': 'Could not extract text from CV'}
         
-        print("🔍 Extracting comprehensive CV information...")
+        print("Extracting comprehensive CV information...")
         
         # Extract ALL information using NER and Regex
         parsed_data = {
@@ -474,7 +524,7 @@ class CVParser:
         
         # Count extracted fields
         extracted_count = sum(1 for v in parsed_data.values() if v)
-        print(f"✅ Extracted {extracted_count} fields from CV")
+        print(f"Extracted {extracted_count} fields from CV")
         
         return parsed_data
     
@@ -497,24 +547,25 @@ class CVParser:
         
         return ' | '.join(formatted) if formatted else None
     
-    def parse_with_deepseek(self, text: str) -> Dict[str, Any]:
-        """Parse CV using DeepSeek LLM via OpenRouter (FREE) for enhanced extraction"""
+    def parse_with_aurora(self, text: str) -> Dict[str, Any]:
+        """Parse CV using Aurora Alpha LLM via OpenRouter for enhanced extraction"""
         
-        # Initialize OpenRouter client for FREE DeepSeek access
+        # Initialize OpenRouter API key
         api_key = os.getenv('OPENROUTER_API_KEY', '')
         
         if not api_key:
             print("OPENROUTER_API_KEY not set, skipping LLM parsing")
             return {}
         
-        try:
-            client = OpenAI(
-                api_key=api_key,
-                base_url="https://openrouter.ai/api/v1"
-            )
-        except Exception as e:
-            print(f"Failed to initialize OpenRouter client: {e}")
-            return {}
+        print(f"Using OpenRouter API key: {api_key[:15]}...{api_key[-4:]}")
+        
+        # Try multiple models in order of preference
+        models_to_try = [
+            "openrouter/aurora-alpha",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "google/gemini-flash-1.5",
+            "anthropic/claude-3-haiku"
+        ]
         
         prompt = f"""You are an expert CV/Resume parser. Extract ALL structured information from the following CV text.
 
@@ -530,9 +581,16 @@ Return a JSON object with these EXACT fields (extract all available data):
 - total_experience: total years of professional experience (e.g., "5 years")
 - current_position: current job title
 - current_company: current company name
-- education: formatted education history with degree, institution, and year (e.g., "B.S. Computer Science, MIT (2020)")
+- experience: array of work experience objects with title, company, duration, and description
+- education: array of education objects or formatted string with degree, institution, and year
+- projects: array of project objects with name, description, technologies used, and links (if any)
 - certifications: comma-separated list of ALL certifications
 - languages: comma-separated list of ALL languages spoken
+- awards: comma-separated list of awards and achievements
+- publications: comma-separated list of publications or research papers
+- volunteer_work: comma-separated list of volunteer experiences
+- interests: comma-separated list of hobbies and interests
+- professional_memberships: comma-separated list of professional organizations
 - portfolio_url: personal website or portfolio URL
 - linkedin: LinkedIn profile URL
 - github: GitHub profile URL
@@ -541,23 +599,166 @@ Return a JSON object with these EXACT fields (extract all available data):
 CV Text:
 {text[:3000]}
 
-IMPORTANT: Extract EVERY piece of information available. Return ONLY valid JSON, no markdown, no code blocks."""
+IMPORTANT: 
+- Extract EVERY piece of information available including projects, awards, interests, volunteer work, etc.
+- For projects, extract project name, description, technologies/tools used, duration, and any links
+- For experience, extract company name, job title, duration, and key responsibilities
+- Return ONLY valid JSON, no markdown, no code blocks
+- Use null for fields not found in the CV"""
 
+        print("Calling OpenRouter API...")
+        
+        last_error = None
+        
+        # Try each model until one succeeds
+        for model in models_to_try:
+            try:
+                print(f"Trying model: {model}")
+                import requests
+                
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://selectra-ai.com",
+                        "X-Title": "Selectra AI Interviews",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": "You are a professional CV parser. Return only valid JSON."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.1,
+                        "max_tokens": 3000
+                    },
+                    timeout=30
+                )
+                
+                result_data = response.json()
+                
+                # Check if response contains an error
+                if 'error' in result_data:
+                    error_msg = result_data['error'].get('message', 'Unknown error')
+                    error_code = result_data['error'].get('code', 'N/A')
+                    provider = result_data['error'].get('metadata', {}).get('provider_name', 'Unknown')
+                    
+                    print(f"Model {model} failed - Error {error_code}: {error_msg} (Provider: {provider})")
+                    last_error = f"{error_msg} (Code: {error_code})"
+                    continue  # Try next model
+                
+                if response.status_code != 200:
+                    print(f"Model {model} failed - HTTP {response.status_code}")
+                    last_error = f"HTTP {response.status_code}"
+                    continue  # Try next model
+                
+                # Check if choices exists in response
+                if 'choices' not in result_data or not result_data['choices']:
+                    print(f"Model {model} failed - No choices in response")
+                    last_error = "No choices in response"
+                    continue  # Try next model
+                
+                print(f"SUCCESS! Using model: {model}")
+                
+                result = result_data['choices'][0]['message']['content'].strip()
+                print(f"SUCCESS! Using model: {model}")
+                
+                result = result_data['choices'][0]['message']['content'].strip()
+                
+                print(f"Extracted content ({len(result)} chars)")
+                
+                # Clean up response
+                if result.startswith('```json'):
+                    result = result[7:]
+                elif result.startswith('```'):
+                    result = result[3:]
+                if result.endswith('```'):
+                    result = result[:-3]
+                
+                parsed_json = json.loads(result.strip())
+                
+                print("\n" + "="*70)
+                print("PARSED CV DATA (JSON):")
+                print("="*70)
+                print(json.dumps(parsed_json, indent=2))
+                print("="*70 + "\n")
+                
+                print("LLM parsing successful!")
+                return parsed_json
+                
+            except requests.exceptions.RequestException as e:
+                print(f"Model {model} failed - Request error: {str(e)[:100]}")
+                last_error = str(e)[:100]
+                continue  # Try next model
+            except json.JSONDecodeError as e:
+                print(f"Model {model} failed - JSON parse error: {str(e)[:100]}")
+                last_error = f"JSON parse error: {str(e)[:100]}"
+                continue  # Try next model
+            except Exception as e:
+                print(f"Model {model} failed - Unexpected error: {str(e)[:100]}")
+                last_error = str(e)[:100]
+                continue  # Try next model
+        
+        # All models failed
+        print(f"All models failed. Last error: {last_error}")
+        return {}
+    
+    def parse_with_gemini(self, file_path: str) -> Dict[str, Any]:
+        """Parse CV directly using Google Gemini API (can process PDF directly)"""
         try:
-            response = client.chat.completions.create(
-                model="deepseek/deepseek-r1:free",  # FREE DeepSeek model via OpenRouter
-                messages=[
-                    {"role": "system", "content": "You are a professional CV parser. Return only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=2000
-            )
+            api_key = os.getenv('GEMINI_API_KEY', '')
             
-            result = response.choices[0].message.content.strip()
+            if not api_key:
+                print("⚠️ GEMINI_API_KEY not set, skipping Gemini parsing")
+                return {}
             
-            print(f"LLM Response received: {len(result)} characters")
-            print(f"First 200 chars: {result[:200]}")
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Upload the file
+            print(f"Uploading file to Gemini for parsing: {file_path}")
+            uploaded_file = genai.upload_file(file_path)
+            print(f"Upload complete: {uploaded_file.name}")
+            
+            # Use Gemini Pro model for structured extraction
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = """You are an expert CV/Resume parser. Analyze this CV document and extract ALL structured information.
+
+Return a JSON object with these EXACT fields (extract all available data):
+{
+  "full_name": "candidate's full name",
+  "email": "email address",
+  "phone": "phone number with country code if available",
+  "location": "current location/city/country",
+  "date_of_birth": "date of birth if mentioned",
+  "nationality": "nationality if mentioned",
+  "summary": "professional summary or objective (2-3 sentences)",
+  "skills": "comma-separated list of ALL technical and soft skills found",
+  "total_experience": "total years of professional experience (e.g., '5 years')",
+  "current_position": "current job title",
+  "current_company": "current company name",
+  "education": "formatted education history with degree, institution, and year",
+  "certifications": "comma-separated list of ALL certifications",
+  "languages": "comma-separated list of ALL languages spoken",
+  "portfolio_url": "personal website or portfolio URL",
+  "linkedin": "LinkedIn profile URL",
+  "github": "GitHub profile URL",
+  "references": "reference information or 'Available upon request'"
+}
+
+IMPORTANT: 
+- Extract EVERY piece of information available from the document
+- Handle tables, images, and complex layouts
+- Return ONLY valid JSON, no markdown, no code blocks
+- Use null for fields not found"""
+            
+            print("Gemini parsing CV...")
+            response = model.generate_content([uploaded_file, prompt])
+            
+            result = response.text.strip()
+            print(f"Gemini response received: {len(result)} characters")
             
             # Clean up response
             if result.startswith('```json'):
@@ -568,70 +769,70 @@ IMPORTANT: Extract EVERY piece of information available. Return ONLY valid JSON,
                 result = result[:-3]
             
             parsed_json = json.loads(result.strip())
-            print("LLM parsing successful!")
+            print("Gemini parsing successful!")
+            
+            # Clean up the uploaded file
+            genai.delete_file(uploaded_file.name)
+            
             return parsed_json
             
         except Exception as e:
-            error_name = type(e).__name__
-            
-            # Handle rate limits gracefully
-            if error_name == 'RateLimitError':
-                print("⚠️ OpenRouter Rate Limit (temporary) - Falling back to NER/NLP")
-            else:
-                print(f"❌ OpenRouter API Error ({error_name}): {str(e)[:300]}")
-            
+            print(f"Gemini CV parsing failed: {str(e)[:300]}")
             return {}
     
-    def parse_cv_enhanced(self, file_path: str, use_llm: bool = True) -> Dict[str, Any]:
+    def parse_cv_enhanced(self, file_path: str, use_llm: bool = True, use_gemini: bool = True) -> Dict[str, Any]:
         """
-        Enhanced parsing combining NER/NLP with DeepSeek LLM
+        Enhanced parsing using Aurora Alpha LLM only (NER/NLP disabled for testing)
+        Priority: Gemini (if available) > Aurora Alpha
         """
         try:
-            # Get base data using NER/NLP
-            base_data = self.parse_cv(file_path)
+            # Try Gemini first if available and requested
+            if use_gemini and os.getenv('GEMINI_API_KEY'):
+                try:
+                    print("Attempting Gemini API parsing...")
+                    gemini_data = self.parse_with_gemini(file_path)
+                    
+                    if gemini_data:
+                        gemini_data['parsed_at'] = datetime.now().isoformat()
+                        gemini_data['parsing_method'] = 'gemini_api'
+                        print("Successfully parsed with Gemini API")
+                        return gemini_data
+                except Exception as e:
+                    print(f"Gemini parsing failed, trying Aurora Alpha: {str(e)[:200]}")
             
-            if 'error' in base_data:
-                return base_data
-            
+            # Try Aurora Alpha if Gemini failed or not available
             if use_llm and os.getenv('OPENROUTER_API_KEY'):
                 try:
+                    print("Attempting Aurora Alpha API parsing...")
                     # Get text for LLM parsing
                     text = self.extract_text(file_path)
-                    llm_data = self.parse_with_deepseek(text)
+                    llm_data = self.parse_with_aurora(text)
                     
-                    if not llm_data:
-                        # LLM parsing failed, return base data
-                        base_data['parsing_method'] = 'ner_nlp_only'
-                        return base_data
-                    
-                    # Merge LLM data with base data (LLM takes priority)
-                    enhanced_data = {
-                        'full_name': llm_data.get('full_name') or base_data.get('name', ''),
-                        'email': llm_data.get('email') or base_data.get('email', ''),
-                        'phone': llm_data.get('phone') or base_data.get('phone', ''),
-                        'location': llm_data.get('location') or base_data.get('location', ''),
-                        'summary': llm_data.get('summary', ''),
-                        'skills': llm_data.get('skills') or base_data.get('skills', []),
-                        'experience': llm_data.get('experience') or base_data.get('work_experience', []),
-                        'education': llm_data.get('education') or base_data.get('education', []),
-                        'certifications': llm_data.get('certifications', []),
-                        'languages': llm_data.get('languages', []),
-                        'linkedin': llm_data.get('linkedin') or base_data.get('linkedin', ''),
-                        'github': llm_data.get('github') or base_data.get('github', ''),
-                        'total_experience': llm_data.get('total_experience') or base_data.get('experience_years', ''),
-                        'parsed_at': datetime.now().isoformat(),
-                        'parsing_method': 'deepseek_llm'
-                    }
-                    
-                    return enhanced_data
+                    if llm_data:
+                        llm_data['parsed_at'] = datetime.now().isoformat()
+                        llm_data['parsing_method'] = 'aurora_llm'
+                        print("Successfully parsed with Aurora Alpha")
+                        return llm_data
+                    else:
+                        print("Aurora Alpha parsing returned empty data")
+                        return {
+                            'error': 'Aurora Alpha parsing failed - no data returned',
+                            'parsing_method': 'failed'
+                        }
                 except Exception as e:
-                    print(f"Error in LLM parsing, falling back to NER/NLP: {e}")
-                    base_data['parsing_method'] = 'ner_nlp_fallback'
-                    base_data['llm_error'] = str(e)
-                    return base_data
+                    print(f"Error in Aurora Alpha parsing: {str(e)[:300]}")
+                    import traceback
+                    traceback.print_exc()
+                    return {
+                        'error': f'Aurora Alpha parsing failed: {str(e)}',
+                        'parsing_method': 'failed'
+                    }
             
-            base_data['parsing_method'] = 'ner_nlp_only'
-            return base_data
+            # No API keys available
+            return {
+                'error': 'No API keys configured (GEMINI_API_KEY or OPENROUTER_API_KEY required)',
+                'parsing_method': 'failed'
+            }
             
         except Exception as e:
             print(f"Critical error in CV parsing: {e}")

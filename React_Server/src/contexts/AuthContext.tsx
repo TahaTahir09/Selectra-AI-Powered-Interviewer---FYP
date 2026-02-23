@@ -1,6 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authAPI, User } from '@/services/api';
+import { authAPI, authStorage, User } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+
+// Helper to determine user type from URL path
+const getUserTypeFromPath = (): 'candidate' | 'organization' => {
+  const pathname = window.location.pathname;
+  if (pathname.startsWith('/org') || pathname.startsWith('/organization')) {
+    return 'organization';
+  }
+  return 'candidate';
+};
 
 interface AuthContextType {
   user: User | null;
@@ -18,39 +27,66 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const { toast } = useToast();
 
+  // Determine current user type based on URL
+  const getCurrentUserType = () => getUserTypeFromPath();
+
+  // Watch for path changes
   useEffect(() => {
-    // Check if user is already logged in
+    const checkPath = () => {
+      if (window.location.pathname !== currentPath) {
+        setCurrentPath(window.location.pathname);
+      }
+    };
+    
+    // Check periodically and on various events
+    const interval = setInterval(checkPath, 100);
+    window.addEventListener('popstate', checkPath);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('popstate', checkPath);
+    };
+  }, [currentPath]);
+
+  useEffect(() => {
+    // Check if user is already logged in based on current path
     const checkAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-      const savedUser = localStorage.getItem('user');
+      setLoading(true);
+      const currentUserType = getCurrentUserType();
+      const token = authStorage.getAccessToken(currentUserType);
+      const savedUser = authStorage.getUser(currentUserType);
 
       if (token && savedUser) {
         try {
-          setUser(JSON.parse(savedUser));
+          setUser(savedUser);
           // Optionally refresh user data from server
-          const profileData = await authAPI.getProfile();
+          const profileData = await authAPI.getProfile(currentUserType);
           setUser(profileData.user);
         } catch (error) {
           console.error('Auth check failed:', error);
-          authAPI.logout();
+          authAPI.logout(currentUserType);
           setUser(null);
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
 
     checkAuth();
-  }, []);
+  }, [currentPath]);
 
   const login = async (username: string, password: string) => {
+    const currentUserType = getCurrentUserType();
     try {
       setLoading(true);
-      await authAPI.login({ username, password });
+      await authAPI.login({ username, password }, currentUserType);
       
       // Fetch user profile after login
-      const profileData = await authAPI.getProfile();
+      const profileData = await authAPI.getProfile(currentUserType);
       setUser(profileData.user);
 
       toast({
@@ -96,7 +132,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    authAPI.logout();
+    const currentUserType = getCurrentUserType();
+    authAPI.logout(currentUserType);
     setUser(null);
     toast({
       title: 'Logged Out',

@@ -2,6 +2,56 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
+// Helper to determine user type from current URL path
+const getCurrentUserType = (): 'candidate' | 'organization' => {
+  const path = window.location.pathname;
+  if (path.startsWith('/org') || path.startsWith('/organization')) {
+    return 'organization';
+  }
+  return 'candidate';
+};
+
+// Helper to get storage key prefix based on user type
+const getStoragePrefix = (userType?: 'candidate' | 'organization'): string => {
+  const type = userType || getCurrentUserType();
+  return type === 'organization' ? 'org_' : 'candidate_';
+};
+
+// Storage helpers that use user-type-specific keys
+export const authStorage = {
+  getAccessToken: (userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    return localStorage.getItem(`${prefix}accessToken`);
+  },
+  setAccessToken: (token: string, userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    localStorage.setItem(`${prefix}accessToken`, token);
+  },
+  getRefreshToken: (userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    return localStorage.getItem(`${prefix}refreshToken`);
+  },
+  setRefreshToken: (token: string, userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    localStorage.setItem(`${prefix}refreshToken`, token);
+  },
+  getUser: (userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    const user = localStorage.getItem(`${prefix}user`);
+    return user ? JSON.parse(user) : null;
+  },
+  setUser: (user: any, userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    localStorage.setItem(`${prefix}user`, JSON.stringify(user));
+  },
+  clear: (userType?: 'candidate' | 'organization') => {
+    const prefix = getStoragePrefix(userType);
+    localStorage.removeItem(`${prefix}accessToken`);
+    localStorage.removeItem(`${prefix}refreshToken`);
+    localStorage.removeItem(`${prefix}user`);
+  },
+};
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,7 +63,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token = authStorage.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,21 +82,19 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
+        const refreshToken = authStorage.getRefreshToken();
         const response = await axios.post(`${API_BASE_URL}/users/auth/refresh/`, {
           refresh: refreshToken,
         });
 
         const { access } = response.data;
-        localStorage.setItem('accessToken', access);
+        authStorage.setAccessToken(access);
 
         originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh token expired, logout user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        authStorage.clear();
         window.location.href = '/';
         return Promise.reject(refreshError);
       }
@@ -119,6 +167,9 @@ export interface Application {
   candidate_email: string;
   cv_url?: string;
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
+  similarity_score?: number;
+  interview_link?: string;
+  parsed_resume?: any;
   created_at: string;
 }
 
@@ -133,11 +184,12 @@ export interface Interview {
 
 // Auth API
 export const authAPI = {
-  login: async (credentials: LoginCredentials) => {
+  login: async (credentials: LoginCredentials, userType?: 'candidate' | 'organization') => {
     const response = await api.post('/users/auth/login/', credentials);
     const { access, refresh } = response.data;
-    localStorage.setItem('accessToken', access);
-    localStorage.setItem('refreshToken', refresh);
+    // Store tokens with user-type-specific keys
+    authStorage.setAccessToken(access, userType);
+    authStorage.setRefreshToken(refresh, userType);
     return response.data;
   },
 
@@ -146,15 +198,13 @@ export const authAPI = {
     return response.data;
   },
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+  logout: (userType?: 'candidate' | 'organization') => {
+    authStorage.clear(userType);
   },
 
-  getProfile: async () => {
+  getProfile: async (userType?: 'candidate' | 'organization') => {
     const response = await api.get('/users/profile/');
-    localStorage.setItem('user', JSON.stringify(response.data.user));
+    authStorage.setUser(response.data.user, userType);
     return response.data;
   },
 
@@ -239,6 +289,11 @@ export const applicationAPI = {
     const response = await api.post(`/core/applications/${id}/update_status/`, { status });
     return response.data;
   },
+
+  recalculateSimilarity: async (id: number) => {
+    const response = await api.post(`/core/applications/${id}/recalculate_similarity/`);
+    return response.data;
+  },
 };
 
 // Interview API
@@ -262,6 +317,70 @@ export const interviewAPI = {
     const response = await api.post(`/core/interviews/${id}/update_status/`, { status });
     return response.data;
   },
+};
+
+// Flask AI Service API (for interview questions)
+const FLASK_API_URL = import.meta.env.VITE_FLASK_API_URL || 'http://localhost:5000';
+
+export const flaskAPI = {
+  // Start an interview session
+  startInterview: async (jobDescription: string, resumeSummary: string) => {
+    const response = await axios.post(`${FLASK_API_URL}/interview/start`, {
+      job_description: jobDescription,
+      resume_summary: resumeSummary
+    });
+    return response.data;
+  },
+
+  // Get next interview question
+  getNextQuestion: async (
+    jobDescription: string, 
+    resumeSummary: string,
+    conversationHistory: { role: string; content: string }[],
+    questionNumber: number,
+    totalQuestions: number = 10
+  ) => {
+    const response = await axios.post(`${FLASK_API_URL}/interview/next-question`, {
+      job_description: jobDescription,
+      resume_summary: resumeSummary,
+      conversation_history: conversationHistory,
+      question_number: questionNumber,
+      total_questions: totalQuestions
+    });
+    return response.data;
+  },
+
+  // Evaluate a single answer
+  evaluateAnswer: async (
+    jobDescription: string,
+    question: string,
+    answer: string,
+    resumeSummary: string
+  ) => {
+    const response = await axios.post(`${FLASK_API_URL}/interview/evaluate-answer`, {
+      job_description: jobDescription,
+      question: question,
+      answer: answer,
+      resume_summary: resumeSummary
+    });
+    return response.data;
+  },
+
+  // Get final interview evaluation
+  evaluateFullInterview: async (
+    jobDescription: string,
+    resumeSummary: string,
+    conversationHistory: { role: string; content: string }[],
+    answerScores: { score: number; feedback: string }[]
+  ) => {
+    const response = await axios.post(`${FLASK_API_URL}/interview/evaluate`, {
+      job_description: jobDescription,
+      resume_summary: resumeSummary,
+      conversation_history: conversationHistory,
+      answer_scores: answerScores
+    });
+    return response.data;
+  }
 };
 
 export default api;

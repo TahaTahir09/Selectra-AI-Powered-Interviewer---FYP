@@ -132,6 +132,8 @@ class Application(models.Model):
     # Additional fields for AI processing
     parsed_resume = models.JSONField(null=True, blank=True)
     embedding_vector_reference = models.CharField(max_length=512, blank=True, null=True)
+    similarity_score = models.FloatField(null=True, blank=True, help_text="AI-calculated similarity score between CV and job description (0-1)")
+    interview_link = models.CharField(max_length=255, blank=True, null=True, help_text="Auto-generated unique interview link when similarity score >= 50%")
     
     class Meta:
         db_table = 'applications'

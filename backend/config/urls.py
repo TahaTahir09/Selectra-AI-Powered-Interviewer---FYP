@@ -19,6 +19,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from core.cv_api import parse_cv_api, parse_cv_text, test_cv_endpoint
 
 def api_root(request):
     return JsonResponse({
@@ -30,6 +31,7 @@ def api_root(request):
             'jobs': '/api/jobs/',
             'applications': '/api/applications/',
             'interviews': '/api/interviews/',
+            'cv_parsing': '/api/parse-cv/',
         }
     })
 
@@ -38,6 +40,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/core/', include('core.urls')),
+    # CV Parsing endpoints (direct access without /core/ prefix)
+    path('api/parse-cv/', parse_cv_api, name='parse-cv'),
+    path('api/parse-cv-text/', parse_cv_text, name='parse-cv-text'),
+    path('api/test-cv/', test_cv_endpoint, name='test-cv'),
 ]
 
 # Serve media files in development

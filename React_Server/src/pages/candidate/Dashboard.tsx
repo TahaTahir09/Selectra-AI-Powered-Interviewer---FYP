@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, Clock, CheckCircle, BarChart, Loader2 } from "lucide-react";
+import { Briefcase, Clock, CheckCircle, BarChart, Loader2, Play, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,9 +12,17 @@ import FormInput from "@/components/FormInput";
 
 interface Application {
   id: number;
-  job_post: any;
+  job_post: {
+    id: number;
+    job_title: string;
+    location: string;
+    employment_type: string;
+    organization_name: string;
+  };
   status: string;
   created_at: string;
+  similarity_score?: number;
+  interview_link?: string;
 }
 
 const CandidateDashboard = () => {
@@ -158,6 +166,49 @@ const CandidateDashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Ready for Interview - Applications with auto-generated interview links */}
+        {applications.filter(app => app.interview_link).length > 0 && (
+          <Card className="shadow-lg border-2 border-green-200">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-white border-b">
+              <CardTitle className="text-2xl flex items-center gap-2 text-green-700">
+                <Link className="h-6 w-6" />
+                Ready for Interview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground mb-4">
+                You are eligible to take the interview for these applications.
+              </p>
+              <div className="space-y-4">
+                {applications
+                  .filter(app => app.interview_link)
+                  .map((app) => (
+                    <div
+                      key={app.id}
+                      className="flex items-center justify-between p-4 border-2 border-green-100 rounded-xl bg-green-50/50 hover:shadow-md transition-all"
+                    >
+                      <div>
+                        <h3 className="font-bold text-lg text-foreground mb-1">
+                          {app.job_post?.job_title || "Job Title"}
+                        </h3>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const interviewId = app.interview_link?.split('/').pop();
+                          navigate(`/interview/${interviewId}`);
+                        }}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Interview
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Applications */}
         <Card className="shadow-lg">

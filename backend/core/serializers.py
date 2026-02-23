@@ -106,18 +106,22 @@ class JobPostCreateUpdateSerializer(serializers.ModelSerializer):
 
 class ApplicationListSerializer(serializers.ModelSerializer):
     """
-    Serializer for listing applications.
+    Serializer for listing applications with full job post details.
     """
-    job_title = serializers.CharField(source='job_post.job_title', read_only=True)
+    job_post = JobPostListSerializer(read_only=True)
     interview_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Application
         fields = [
-            'id', 'job_title', 'candidate_name', 'candidate_email',
-            'status', 'interview_count', 'created_at'
+            'id', 'job_post', 'candidate_name', 'candidate_email',
+            'candidate_phone', 'candidate_location', 'candidate_linkedin',
+            'candidate_github', 'candidate_skills', 'candidate_education',
+            'candidate_experience', 'years_of_experience',
+            'status', 'similarity_score', 'interview_link', 'interview_count', 'created_at', 
+            'updated_at', 'cv_url', 'parsed_resume'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'similarity_score', 'interview_link', 'created_at', 'updated_at']
     
     def get_interview_count(self, obj):
         return obj.interviews.count()
@@ -135,9 +139,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'job_post', 'candidate', 'candidate_name',
             'candidate_email', 'cv_url', 'status', 'parsed_resume',
-            'embedding_vector_reference', 'created_at', 'updated_at'
+            'embedding_vector_reference', 'similarity_score', 'interview_link', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'candidate', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'candidate', 'similarity_score', 'interview_link', 'created_at', 'updated_at']
 
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):
