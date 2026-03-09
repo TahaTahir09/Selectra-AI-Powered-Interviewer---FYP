@@ -495,6 +495,7 @@ def search_applications():
 # ==================== INTERVIEW ROUTES ====================
 
 from .interview_service import interview_service
+from .tts_service import tts_service
 
 @main.route('/interview/start', methods=['POST'])
 def start_interview():
@@ -549,6 +550,12 @@ def start_interview():
     
     result = interview_service.generate_initial_question(job_description, resume_summary)
     
+    # Generate audio for the question using TTS
+    if result.get('success') and result.get('question'):
+        audio_result = tts_service.text_to_speech(result['question'])
+        if audio_result:
+            result['audio'] = audio_result
+    
     return jsonify(result), 200
 
 
@@ -587,7 +594,7 @@ def get_next_question():
               required: true
             total_questions:
               type: integer
-              default: 10
+              default: 5
     responses:
       200:
         description: Next interview question
@@ -608,7 +615,7 @@ def get_next_question():
     resume_summary = data.get('resume_summary', '')
     conversation_history = data.get('conversation_history', [])
     question_number = data.get('question_number', 1)
-    total_questions = data.get('total_questions', 10)
+    total_questions = data.get('total_questions', 5)
     
     if not job_description:
         return jsonify({'error': 'Job description is required'}), 400
@@ -622,6 +629,12 @@ def get_next_question():
         question_number,
         total_questions
     )
+    
+    # Generate audio for the question using TTS
+    if result.get('success') and result.get('question'):
+        audio_result = tts_service.text_to_speech(result['question'])
+        if audio_result:
+            result['audio'] = audio_result
     
     return jsonify(result), 200
 
@@ -758,3 +771,92 @@ def evaluate_full_interview():
     )
     
     return jsonify(result), 200
+
+
+@main.route('/tts/convert', methods=['POST'])
+def text_to_speech():
+    """
+    Convert text to speech using ElevenLabs API
+    ---
+    tags:
+      - Text-to-Speech
+    consumes:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            text:
+              type: string
+              required: true
+              description: The text to convert to speech
+    responses:
+      200:
+        description: Audio generated successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            audio_base64:
+              type: string
+              description: Base64 encoded MP3 audio
+            format:
+              type: string
+      400:
+        description: Invalid input or TTS unavailable
+    """
+    data = request.json
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({'error': 'Text is required'}), 400
+    
+    if not tts_service.is_available():
+        return jsonify({'error': 'TTS service is not available. Check ELEVENLABS_API_KEY.'}), 400
+    
+    print(f"\n=== Converting Text to Speech ===")
+    print(f"Text length: {len(text)} characters")
+    
+    result = tts_service.text_to_speech(text)
+    
+    if result:
+        return jsonify({
+            'success': True,
+            **result
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'TTS conversion failed'
+        }), 500
+
+
+@main.route('/tts/status', methods=['GET'])
+def tts_status():
+    """
+    Check if TTS service is available
+    ---
+    tags:
+      - Text-to-Speech
+    responses:
+      200:
+        description: TTS service status
+        schema:
+          type: object
+          properties:
+            available:
+              type: boolean
+            voice_id:
+              type: string
+            model_id:
+              type: string
+    """
+    return jsonify({
+        'available': tts_service.is_available(),
+        'voice_id': tts_service.voice_id,
+        'model_id': tts_service.model_id
+    }), 200

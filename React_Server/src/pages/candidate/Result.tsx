@@ -92,23 +92,23 @@ const Result = () => {
     switch (status) {
       case "completed":
       case "Pass":
-        return "bg-green-100 text-green-800";
+        return "bg-green-500/20 text-green-400";
       case "rejected":
       case "Fail":
-        return "bg-red-100 text-red-800";
+        return "bg-red-500/20 text-red-400";
       default:
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-500/20 text-yellow-400";
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Header />
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading interview results...</p>
+            <p className="text-white/60">Loading interview results...</p>
           </div>
         </main>
         <Footer />
@@ -118,14 +118,14 @@ const Result = () => {
 
   if (!result) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Header />
         <main className="flex-1 flex items-center justify-center p-4">
           <Card className="max-w-2xl w-full">
             <CardContent className="p-8 text-center">
               <Clock className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">Results Pending</h3>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-white/60 mb-6">
                 Your interview results are being processed. Please check back later.
               </p>
               <Button onClick={() => navigate("/candidate/dashboard")}>
@@ -144,7 +144,7 @@ const Result = () => {
   const summary = result.evaluation_summary || "Your interview is being evaluated. Results will be available soon.";
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">
@@ -158,7 +158,7 @@ const Result = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">Overall Score</p>
+              <p className="text-sm text-white/60 mb-2">Overall Score</p>
               <div className="relative w-32 h-32 mx-auto">
                 <svg className="transform -rotate-90 w-32 h-32">
                   <circle
@@ -183,14 +183,14 @@ const Result = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-4xl font-bold text-foreground">{score}</span>
+                  <span className="text-4xl font-bold text-white">{score}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-muted/50 p-6 rounded-lg">
-              <h3 className="font-semibold text-foreground mb-2">Summary</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{summary}</p>
+              <h3 className="font-semibold text-white mb-2">Summary</h3>
+              <p className="text-sm text-white/60 leading-relaxed">{summary}</p>
             </div>
 
             {/* CV Verification and Job Fit for AI Interview */}
@@ -254,7 +254,7 @@ const Result = () => {
             {/* Interview Transcript for AI Interview */}
             {isAIInterview && messages.length > 0 && (
               <div className="border rounded-lg p-4">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
                   <MessageSquare className="h-5 w-5" />
                   Interview Transcript
                 </h3>
@@ -267,7 +267,7 @@ const Result = () => {
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
                         msg.role === 'interviewer' 
                           ? 'bg-primary' 
-                          : 'bg-orange-500'
+                          : 'bg-gradient-to-r from-purple-600 to-pink-600'
                       }`}>
                         {msg.role === 'interviewer' ? (
                           <Bot className="h-4 w-4 text-white" />
@@ -276,7 +276,7 @@ const Result = () => {
                         )}
                       </div>
                       <div className={`max-w-[80%] ${msg.role === 'candidate' ? 'text-right' : ''}`}>
-                        <p className="text-xs text-muted-foreground mb-1">
+                        <p className="text-xs text-white/60 mb-1">
                           {msg.role === 'interviewer' ? 'AI Interviewer' : 'You'}
                         </p>
                         <div className={`p-3 rounded-lg text-sm ${
@@ -295,7 +295,7 @@ const Result = () => {
 
             {result.scheduled_time && (
               <div className="bg-primary/10 p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-white/60">
                   <span className="font-semibold">Interview Date:</span>{" "}
                   {new Date(result.scheduled_time).toLocaleDateString('en-US', {
                     year: 'numeric',

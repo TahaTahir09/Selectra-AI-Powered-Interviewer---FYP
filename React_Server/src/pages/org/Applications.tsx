@@ -90,7 +90,7 @@ const Applications = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="organization" 
         userName={user?.username} 
@@ -103,20 +103,20 @@ const Applications = () => {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">
-              <span className="text-orange-500">All Applications</span>
+              <span className="text-purple-400">All Applications</span>
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-white/60">
               View and manage applications for all your job postings
             </p>
           </div>
 
           {/* Summary Stats */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Applications</p>
+                    <p className="text-sm text-white/60 mb-1">Total Applications</p>
                     <p className="text-3xl font-bold text-blue-500">
                       {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : getTotalApplications()}
                     </p>
@@ -125,24 +125,24 @@ const Applications = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Active Jobs</p>
-                    <p className="text-3xl font-bold text-orange-500">
+                    <p className="text-sm text-white/60 mb-1">Active Jobs</p>
+                    <p className="text-3xl font-bold text-purple-400">
                       {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : jobs.length}
                     </p>
                   </div>
-                  <Briefcase className="h-12 w-12 text-orange-500/20" />
+                  <Briefcase className="h-12 w-12 text-purple-400/20" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-lg transition-shadow">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Avg. Applications/Job</p>
+                    <p className="text-sm text-white/60 mb-1">Avg. Applications/Job</p>
                     <p className="text-3xl font-bold text-green-500">
                       {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : 
                         jobs.length > 0 ? Math.round(getTotalApplications() / jobs.length) : 0
@@ -157,7 +157,7 @@ const Applications = () => {
 
           {/* Applications by Job */}
           {loading ? (
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/10 backdrop-blur-xl border-white/20">
               <CardContent className="p-12">
                 <div className="flex items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -165,11 +165,11 @@ const Applications = () => {
               </CardContent>
             </Card>
           ) : jobs.length === 0 ? (
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/10 backdrop-blur-xl border-white/20">
               <CardContent className="p-12">
                 <div className="text-center">
-                  <Briefcase className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No job postings yet</p>
+                  <Briefcase className="h-16 w-16 text-white/60/30 mx-auto mb-4" />
+                  <p className="text-white/60 mb-4">No job postings yet</p>
                   <Button onClick={() => navigate("/org/post-job")} className="bg-gradient-to-r from-primary to-accent">
                     Post Your First Job
                   </Button>
@@ -193,17 +193,17 @@ const Applications = () => {
                 return (
                   <Card key={job.id} className="shadow-lg overflow-hidden">
                     <CardHeader 
-                      className="bg-gradient-to-r from-orange-50 to-white border-b cursor-pointer hover:bg-orange-100 transition-colors"
+                      className="bg-gradient-to-r from-white/10 to-white/5 border-b cursor-pointer hover:bg-orange-100 transition-colors"
                       onClick={() => toggleJobExpansion(job.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div>
                             <CardTitle className="text-2xl flex items-center gap-2">
-                              <Briefcase className="h-6 w-6 text-orange-500" />
+                              <Briefcase className="h-6 w-6 text-purple-400" />
                               {job.job_title}
                             </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-white/60 mt-1">
                               {job.location} • {job.employment_type}
                             </p>
                           </div>
@@ -211,12 +211,12 @@ const Applications = () => {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className="text-2xl font-bold text-blue-600">{applications.length}</p>
-                            <p className="text-xs text-muted-foreground">Applications</p>
+                            <p className="text-xs text-white/60">Applications</p>
                           </div>
                           {applications.length > 0 && avgScore > 0 && (
                             <div className="text-right">
                               <p className="text-2xl font-bold text-green-600">{avgScore}%</p>
-                              <p className="text-xs text-muted-foreground">Avg Match</p>
+                              <p className="text-xs text-white/60">Avg Match</p>
                             </div>
                           )}
                           <Button size="sm" variant="ghost">
@@ -230,26 +230,26 @@ const Applications = () => {
                       <CardContent className="p-6">
                         {applications.length === 0 ? (
                           <div className="text-center py-8">
-                            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                            <p className="text-muted-foreground">No applications yet for this job</p>
+                            <FileText className="h-12 w-12 text-white/60/30 mx-auto mb-3" />
+                            <p className="text-white/60">No applications yet for this job</p>
                           </div>
                         ) : (
                           <div className="space-y-4">
                             {applications.map((app) => (
                               <div
                                 key={app.id}
-                                className="flex items-center justify-between p-4 border-2 border-border rounded-lg hover:shadow-md hover:border-blue-200 transition-all"
+                                className="flex items-center justify-between p-4 border-2 border-white/10 rounded-lg hover:shadow-md hover:border-blue-500/30 transition-all"
                               >
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-2">
-                                    <h3 className="font-bold text-lg text-foreground">{app.candidate_name}</h3>
+                                    <h3 className="font-bold text-lg text-white">{app.candidate_name}</h3>
                                     {app.similarity_score !== null && app.similarity_score !== undefined && (
                                       <Badge 
                                         variant="outline" 
                                         className={`text-sm font-semibold ${
-                                          app.similarity_score >= 75 ? 'bg-green-50 text-green-700 border-green-200' :
-                                          app.similarity_score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                          'bg-red-50 text-red-700 border-red-200'
+                                          app.similarity_score >= 75 ? 'bg-green-50 text-green-700 border-green-500/30' :
+                                          app.similarity_score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-500/30' :
+                                          'bg-red-50 text-red-700 border-red-500/30'
                                         }`}
                                       >
                                         <TrendingUp className="h-3 w-3 mr-1" />
@@ -263,7 +263,7 @@ const Applications = () => {
                                       {app.status}
                                     </Badge>
                                   </div>
-                                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  <div className="flex items-center gap-4 text-sm text-white/60">
                                     <span className="flex items-center gap-1">
                                       <Mail className="h-4 w-4" />
                                       {app.candidate_email}

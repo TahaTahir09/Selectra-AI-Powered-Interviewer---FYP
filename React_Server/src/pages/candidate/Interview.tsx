@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   Play, Loader2, Clock, Send, CheckCircle, 
-  AlertCircle, User, Bot
+  AlertCircle, Volume2, VolumeX,
+  Briefcase, FileText, ArrowRight, Mic, MessageSquare,
+  Award, Target, ChevronRight, Sparkles, Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { applicationAPI, flaskAPI } from "@/services/api";
+import { applicationAPI, flaskAPI, interviewResultsAPI } from "@/services/api";
 
 interface Message {
   role: 'interviewer' | 'candidate';
@@ -17,19 +19,34 @@ interface Message {
   timestamp: Date;
 }
 
+interface QuestionScore {
+  question: string;
+  answer: string;
+  score: number;
+  feedback: string;
+}
+
 interface AnswerScore {
   score: number;
   feedback: string;
 }
 
-type InterviewStage = 'loading' | 'ready' | 'in_progress' | 'answering' | 'completed' | 'error';
+type InterviewStage = 
+  | 'loading' 
+  | 'intro' 
+  | 'ready' 
+  | 'asking' 
+  | 'answering' 
+  | 'submitted'
+  | 'completed' 
+  | 'error';
 
-const TOTAL_QUESTIONS = 5; // Configurable number of questions
-const ANSWER_TIME_LIMIT = 60; // 60 seconds per answer
+const TOTAL_QUESTIONS = 5;
+const ANSWER_TIME_LIMIT = 120;
 
 const Interview = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // This is the interview token from the interview_link
+  const { id } = useParams();
   const { toast } = useToast();
   
   // Application data
@@ -42,8 +59,9 @@ const Interview = () => {
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [questionNumber, setQuestionNumber] = useState(0);
   const [answer, setAnswer] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<Message[]>([]); // Hidden from UI
   const [answerScores, setAnswerScores] = useState<AnswerScore[]>([]);
+  const [questionScores, setQuestionScores] = useState<QuestionScore[]>([]);
   
   // Timer
   const [timeLeft, setTimeLeft] = useState(ANSWER_TIME_LIMIT);
@@ -53,46 +71,56 @@ const Interview = () => {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Text area ref for auto focus
+  // Refs
   const answerRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Audio playback
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
 
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Play audio from base64 encoded MP3
+  const playAudioFromBase64 = useCallback((audioBase64: string) => {
+    if (!audioEnabled) return;
+    
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
+      const audioData = `data:audio/mp3;base64,${audioBase64}`;
+      const audio = new Audio(audioData);
+      audioRef.current = audio;
+      
+      audio.onplay = () => setIsPlayingAudio(true);
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.onerror = () => setIsPlayingAudio(false);
+      
+      audio.play().catch(() => setIsPlayingAudio(false));
+    } catch (error) {
+      console.error('Error setting up audio:', error);
+    }
+  }, [audioEnabled]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Fetch application data using the interview token
+  // Fetch application data
   useEffect(() => {
     const fetchApplicationData = async () => {
       try {
-        // The ID in the URL is the interview token (UUID from interview_link)
-        // We need to find the application with this interview link
         const response = await applicationAPI.list();
         const applications = response.results || response;
         
-        // Find application with matching interview link token
         const matchingApp = applications.find((app: any) => 
           app.interview_link && app.interview_link.includes(id)
         );
         
         if (!matchingApp) {
-          toast({
-            title: "Interview Not Found",
-            description: "Could not find the interview. Please check the link.",
-            variant: "destructive",
-          });
           setStage('error');
           return;
         }
         
         setApplication(matchingApp);
         
-        // Set job description from job_post - include title and requirements
         const jobPost = matchingApp.job_post || {};
         const jobDesc = [
           `Job Title: ${jobPost.job_title || 'Not specified'}`,
@@ -102,25 +130,18 @@ const Interview = () => {
         ].filter(Boolean).join('\n\n');
         setJobDescription(jobDesc);
         
-        // Build comprehensive resume summary from parsed_resume for CV-specific questions
+        // Build resume summary
         let resumeText = '';
         if (matchingApp.parsed_resume) {
           const pr = matchingApp.parsed_resume;
-          
-          // Build detailed resume text for LLM context
           const sections = [];
           
-          // Candidate info
           if (pr.name || matchingApp.candidate_name) {
             sections.push(`Candidate Name: ${pr.name || matchingApp.candidate_name}`);
           }
-          
-          // Summary/Objective
           if (pr.summary || pr.objective) {
             sections.push(`Professional Summary: ${pr.summary || pr.objective}`);
           }
-          
-          // Skills - very important for technical questions
           if (pr.skills) {
             const skillsList = Array.isArray(pr.skills) ? pr.skills : 
               (typeof pr.skills === 'string' ? pr.skills.split(',') : []);
@@ -128,70 +149,36 @@ const Interview = () => {
               sections.push(`Technical Skills: ${skillsList.join(', ')}`);
             }
           }
-          
-          // Work Experience - detailed for project/role questions
           if (pr.experience && Array.isArray(pr.experience)) {
-            const expDetails = pr.experience.map((exp: any, i: number) => {
+            const expDetails = pr.experience.map((exp: any) => {
               const parts = [];
               if (exp.title || exp.position) parts.push(`Role: ${exp.title || exp.position}`);
               if (exp.company || exp.organization) parts.push(`Company: ${exp.company || exp.organization}`);
               if (exp.duration || exp.dates) parts.push(`Duration: ${exp.duration || exp.dates}`);
               if (exp.description) parts.push(`Responsibilities: ${exp.description}`);
-              if (exp.achievements) parts.push(`Achievements: ${Array.isArray(exp.achievements) ? exp.achievements.join('; ') : exp.achievements}`);
-              if (exp.technologies) parts.push(`Technologies Used: ${Array.isArray(exp.technologies) ? exp.technologies.join(', ') : exp.technologies}`);
               return parts.join('\n');
             }).join('\n\n');
             sections.push(`Work Experience:\n${expDetails}`);
-          } else if (pr.experience && typeof pr.experience === 'string') {
-            sections.push(`Work Experience: ${pr.experience}`);
           }
-          
-          // Projects - for specific project questions
-          if (pr.projects && Array.isArray(pr.projects)) {
-            const projDetails = pr.projects.map((proj: any) => {
-              const parts = [];
-              if (proj.name || proj.title) parts.push(`Project: ${proj.name || proj.title}`);
-              if (proj.description) parts.push(`Description: ${proj.description}`);
-              if (proj.technologies) parts.push(`Technologies: ${Array.isArray(proj.technologies) ? proj.technologies.join(', ') : proj.technologies}`);
-              return parts.join('\n');
-            }).join('\n\n');
-            sections.push(`Projects:\n${projDetails}`);
-          }
-          
-          // Education
           if (pr.education) {
             const eduText = Array.isArray(pr.education) 
-              ? pr.education.map((e: any) => `${e.degree || ''} from ${e.institution || ''} (${e.year || ''})`).join('; ')
+              ? pr.education.map((e: any) => `${e.degree || ''} from ${e.institution || ''}`).join('; ')
               : (typeof pr.education === 'string' ? pr.education : JSON.stringify(pr.education));
             sections.push(`Education: ${eduText}`);
           }
           
-          // Certifications
-          if (pr.certifications && Array.isArray(pr.certifications)) {
-            sections.push(`Certifications: ${pr.certifications.join(', ')}`);
-          }
-          
           resumeText = sections.join('\n\n');
         } else {
-          // Fallback to basic candidate fields
           resumeText = [
             `Candidate: ${matchingApp.candidate_name || ''}`,
-            matchingApp.candidate_skills ? `Skills: ${matchingApp.candidate_skills.join(', ')}` : '',
-            matchingApp.years_of_experience ? `Years of Experience: ${matchingApp.years_of_experience}` : '',
-            matchingApp.candidate_education ? `Education: ${matchingApp.candidate_education}` : ''
+            matchingApp.candidate_skills ? `Skills: ${matchingApp.candidate_skills.join(', ')}` : ''
           ].filter(Boolean).join('\n');
         }
         setResumeSummary(resumeText);
-        
-        setStage('ready');
+        setStage('intro');
         
       } catch (error: any) {
         console.error('Error fetching application:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load interview data",
-          variant: "destructive",
-        });
         setStage('error');
       }
     };
@@ -199,7 +186,7 @@ const Interview = () => {
     if (id) {
       fetchApplicationData();
     }
-  }, [id, toast]);
+  }, [id]);
 
   // Timer effect
   useEffect(() => {
@@ -207,7 +194,6 @@ const Interview = () => {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            // Time's up - auto submit
             handleSubmitAnswer();
             return 0;
           }
@@ -221,44 +207,44 @@ const Interview = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [stage]);
+  }, [stage, timeLeft]);
 
-  // Format time
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Start the interview
+  // Start the interview - get first question
   const handleStartInterview = async () => {
     setIsLoadingQuestion(true);
-    setStage('in_progress');
+    setStage('asking');
     
     try {
       const result = await flaskAPI.startInterview(jobDescription, resumeSummary);
       
       if (result.success && result.question) {
-        const question = result.question;
-        setCurrentQuestion(question);
+        setCurrentQuestion(result.question);
         setQuestionNumber(1);
         
-        // Add interviewer message
-        setMessages([{
+        // Store in conversation history (hidden from UI)
+        setConversationHistory([{
           role: 'interviewer',
-          content: question,
+          content: result.question,
           timestamp: new Date()
         }]);
         
+        if (result.audio?.audio_base64) {
+          playAudioFromBase64(result.audio.audio_base64);
+        }
+        
         setTimeLeft(ANSWER_TIME_LIMIT);
         setStage('answering');
-        
-        // Focus the answer textarea
         setTimeout(() => answerRef.current?.focus(), 100);
       } else {
         throw new Error('Failed to generate question');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error starting interview:', error);
       toast({
         title: "Error",
@@ -271,92 +257,77 @@ const Interview = () => {
     }
   };
 
-  // Submit answer and get next question
+  // Submit answer
   const handleSubmitAnswer = useCallback(async () => {
     if (isSubmitting) return;
     
-    // Stop timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
     
     const currentAnswer = answer.trim() || "(No answer provided)";
     setIsSubmitting(true);
-    setStage('in_progress');
+    
+    // Add to conversation history (hidden)
+    setConversationHistory(prev => [...prev, {
+      role: 'candidate',
+      content: currentAnswer,
+      timestamp: new Date()
+    }]);
+    
+    setAnswer('');
+    setStage('submitted');
     
     try {
-      // Add candidate's answer to messages
-      setMessages(prev => [...prev, {
-        role: 'candidate',
-        content: currentAnswer,
-        timestamp: new Date()
-      }]);
-      
-      // Evaluate the answer (in background)
-      const evalPromise = flaskAPI.evaluateAnswer(
+      // Evaluate the answer
+      const evalResult = await flaskAPI.evaluateAnswer(
         jobDescription,
         currentQuestion,
         currentAnswer,
         resumeSummary
       );
       
-      // Clear the answer input
-      setAnswer('');
+      setAnswerScores(prev => [...prev, { 
+        score: evalResult.score || 5, 
+        feedback: evalResult.feedback || '' 
+      }]);
+      
+      setQuestionScores(prev => [...prev, {
+        question: currentQuestion,
+        answer: currentAnswer,
+        score: evalResult.score || 5,
+        feedback: evalResult.feedback || ''
+      }]);
       
       // Check if interview is complete
       if (questionNumber >= TOTAL_QUESTIONS) {
-        // Wait for evaluation
-        const evalResult = await evalPromise;
-        const newScores = [...answerScores, { 
-          score: evalResult.score || 5, 
-          feedback: evalResult.feedback || '' 
-        }];
-        setAnswerScores(newScores);
-        
-        // Get final evaluation
-        const finalEval = await flaskAPI.evaluateFullInterview(
-          jobDescription,
-          resumeSummary,
-          messages.concat([{ role: 'candidate', content: currentAnswer, timestamp: new Date() }])
-            .map(m => ({ role: m.role, content: m.content })),
-          newScores
-        );
-        
-        // Store results and navigate to result page
-        localStorage.setItem(`interview_result_${id}`, JSON.stringify({
-          ...finalEval,
-          messages: messages.concat([{ role: 'candidate', content: currentAnswer, timestamp: new Date() }]),
-          application: application
-        }));
-        
-        setStage('completed');
-        
-        toast({
-          title: "Interview Complete!",
-          description: "Your responses have been submitted for evaluation.",
-        });
-        
-        setTimeout(() => navigate(`/interview/result/${id}`), 2000);
-        return;
+        await completeInterview(currentAnswer);
       }
       
-      // Store evaluation score
-      evalPromise.then(evalResult => {
-        setAnswerScores(prev => [...prev, { 
-          score: evalResult.score || 5, 
-          feedback: evalResult.feedback || '' 
-        }]);
-      }).catch(console.error);
-      
-      // Get next question
-      const conversationHistory = messages
-        .concat([{ role: 'candidate', content: currentAnswer, timestamp: new Date() }])
-        .map(m => ({ role: m.role, content: m.content }));
+    } catch (error) {
+      console.error('Error evaluating answer:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [answer, questionNumber, currentQuestion, jobDescription, resumeSummary, isSubmitting]);
+
+  // Get next question
+  const handleNextQuestion = async () => {
+    if (questionNumber >= TOTAL_QUESTIONS) {
+      await completeInterview();
+      return;
+    }
+    
+    setIsLoadingQuestion(true);
+    setStage('asking');
+    
+    try {
+      const historyForAPI = conversationHistory.map(m => ({ role: m.role, content: m.content }));
       
       const nextQ = await flaskAPI.getNextQuestion(
         jobDescription,
         resumeSummary,
-        conversationHistory,
+        historyForAPI,
         questionNumber + 1,
         TOTAL_QUESTIONS
       );
@@ -365,49 +336,107 @@ const Interview = () => {
         setCurrentQuestion(nextQ.question);
         setQuestionNumber(prev => prev + 1);
         
-        // Add interviewer message
-        setMessages(prev => [...prev, {
+        // Add to conversation history (hidden)
+        setConversationHistory(prev => [...prev, {
           role: 'interviewer',
           content: nextQ.question,
           timestamp: new Date()
         }]);
         
+        if (nextQ.audio?.audio_base64) {
+          playAudioFromBase64(nextQ.audio.audio_base64);
+        }
+        
         setTimeLeft(ANSWER_TIME_LIMIT);
         setStage('answering');
-        
-        // Focus the answer textarea
         setTimeout(() => answerRef.current?.focus(), 100);
       } else {
         throw new Error('Failed to get next question');
       }
-      
-    } catch (error: any) {
-      console.error('Error submitting answer:', error);
+    } catch (error) {
+      console.error('Error getting next question:', error);
       toast({
         title: "Error",
-        description: "Failed to process your answer. Please try again.",
+        description: "Failed to get next question. Please try again.",
         variant: "destructive",
       });
-      setStage('answering');
+      setStage('submitted');
     } finally {
-      setIsSubmitting(false);
+      setIsLoadingQuestion(false);
     }
-  }, [answer, questionNumber, messages, answerScores, currentQuestion, jobDescription, resumeSummary, isSubmitting, id, application, navigate, toast]);
+  };
 
-  // Handle Enter key to submit
+  // Complete the interview
+  const completeInterview = async (lastAnswer?: string) => {
+    try {
+      const allMessages = lastAnswer 
+        ? conversationHistory.concat([{ role: 'candidate', content: lastAnswer, timestamp: new Date() }])
+        : conversationHistory;
+      
+      const finalEval = await flaskAPI.evaluateFullInterview(
+        jobDescription,
+        resumeSummary,
+        allMessages.map(m => ({ role: m.role, content: m.content })),
+        answerScores
+      );
+      
+      // Save to Django
+      try {
+        await interviewResultsAPI.saveResults({
+          interview_token: id || '',
+          overall_score: finalEval.overall_score || Math.round(answerScores.reduce((a, b) => a + b.score, 0) / answerScores.length),
+          recommendation: finalEval.recommendation || 'consider',
+          summary: finalEval.summary || '',
+          strengths: finalEval.strengths || [],
+          areas_for_improvement: finalEval.areas_for_improvement || [],
+          cv_verification: finalEval.cv_verification || '',
+          job_fit: finalEval.job_fit || '',
+          questions_and_answers: questionScores
+        });
+      } catch (saveError) {
+        console.error('Failed to save interview results:', saveError);
+      }
+      
+      localStorage.setItem(`interview_result_${id}`, JSON.stringify({
+        ...finalEval,
+        messages: allMessages,
+        application: application,
+        questions_and_answers: questionScores
+      }));
+      
+      setStage('completed');
+      
+      setTimeout(() => navigate(`/interview/result/${id}`), 3000);
+    } catch (error) {
+      console.error('Error completing interview:', error);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && e.ctrlKey && !isSubmitting) {
       handleSubmitAnswer();
     }
   };
 
+  // Get timer color based on time left
+  const getTimerColor = () => {
+    if (timeLeft <= 30) return 'text-red-400';
+    if (timeLeft <= 60) return 'text-yellow-400';
+    return 'text-white';
+  };
+
+  // ==================== RENDER STATES ====================
+
   // Loading state
   if (stage === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-center">
-          <Loader2 className="h-16 w-16 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl text-foreground">Loading Interview...</p>
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse mx-auto" />
+            <Loader2 className="h-10 w-10 animate-spin text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="text-xl text-white/80 mt-6 font-light">Preparing your interview...</p>
         </div>
       </div>
     );
@@ -416,82 +445,152 @@ const Interview = () => {
   // Error state
   if (stage === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
-        <Card className="max-w-md p-8 text-center">
-          <AlertCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
-          <h2 className="text-2xl font-bold mb-2">Interview Not Available</h2>
-          <p className="text-muted-foreground mb-6">
-            This interview link is invalid or has expired.
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+        <Card className="max-w-md w-full bg-white/10 backdrop-blur-xl border-white/20 text-center p-8">
+          <div className="w-20 h-20 rounded-full bg-red-500/20 mx-auto flex items-center justify-center mb-6">
+            <AlertCircle className="h-10 w-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">Interview Not Available</h2>
+          <p className="text-white/60 mb-8">
+            This interview link is invalid or has expired. Please contact your recruiter.
           </p>
-          <Button onClick={() => navigate('/candidate/dashboard')}>
-            Back to Dashboard
+          <Button 
+            onClick={() => navigate('/')}
+            className="bg-white/20 hover:bg-white/30 text-white border-0"
+          >
+            Go Home
           </Button>
         </Card>
       </div>
     );
   }
 
-  // Ready to start state
+  // Introduction screen
+  if (stage === 'intro') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm mb-6">
+              <Sparkles className="h-4 w-4" />
+              AI-Powered Interview
+            </div>
+            <h1 className="text-5xl font-bold text-white mb-4">
+              Welcome to Your Interview
+            </h1>
+            <p className="text-xl text-white/60">
+              {application?.job_post?.job_title || 'Position'} at {application?.job_post?.company_name || application?.organization_name || 'Company'}
+            </p>
+          </div>
+
+          {/* Info Cards */}
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-6 text-center hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 mx-auto flex items-center justify-center mb-4">
+                <MessageSquare className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{TOTAL_QUESTIONS} Questions</h3>
+              <p className="text-white/60 text-sm">Tailored questions based on your resume and job requirements</p>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-6 text-center hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 mx-auto flex items-center justify-center mb-4">
+                <Clock className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{Math.floor(ANSWER_TIME_LIMIT / 60)} Min Per Answer</h3>
+              <p className="text-white/60 text-sm">Take your time to provide thoughtful responses</p>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-6 text-center hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 mx-auto flex items-center justify-center mb-4">
+                <Volume2 className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Audio Questions</h3>
+              <p className="text-white/60 text-sm">Questions will be read aloud for a natural experience</p>
+            </Card>
+          </div>
+
+          {/* Guidelines */}
+          <Card className="bg-white/5 backdrop-blur-xl border-white/10 p-8 mb-8">
+            <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+              <FileText className="h-5 w-5 text-purple-400" />
+              Interview Guidelines
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                { icon: Target, text: "Answer based on your actual experience" },
+                { icon: CheckCircle, text: "Be specific with examples and details" },
+                { icon: Mic, text: "Ensure your speakers are on for audio" },
+                { icon: Award, text: "Take your time to think before answering" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 text-white/70">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                    <item.icon className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <span className="text-sm">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Start Button */}
+          <div className="text-center">
+            <Button 
+              size="lg"
+              onClick={() => setStage('ready')}
+              className="px-12 py-7 text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 rounded-2xl shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105"
+            >
+              I'm Ready to Begin
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Ready to start (confirmation)
   if (stage === 'ready') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white p-4">
-        <Card className="max-w-2xl w-full shadow-lg">
-          <CardHeader className="text-center pb-2">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
-              <Bot className="h-10 w-10 text-white" />
-            </div>
-            <CardTitle className="text-3xl font-bold">AI Interview</CardTitle>
-            <p className="text-muted-foreground mt-2">
-              {application?.job_post?.job_title || 'Position'}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6 pt-4">
-            <div className="bg-orange-50 dark:bg-slate-800 rounded-lg p-6 space-y-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                Interview Guidelines
-              </h3>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>You will be asked <strong>{TOTAL_QUESTIONS} questions</strong> by our AI interviewer</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>You have <strong>{ANSWER_TIME_LIMIT} seconds</strong> to type your answer for each question</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Send className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                  <span>Press <strong>Ctrl+Enter</strong> or click Submit to send your answer</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                  <span>Your answers will be automatically submitted when time runs out</span>
-                </li>
-              </ul>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full bg-white/10 backdrop-blur-xl border-white/20 p-8 text-center">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 mx-auto flex items-center justify-center mb-6 animate-pulse">
+            <Briefcase className="h-12 w-12 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Start?</h2>
+          <p className="text-white/60 mb-8">
+            Your interview for <span className="text-white font-medium">{application?.job_post?.job_title}</span> is about to begin.
+          </p>
+          
+          <div className="space-y-4">
+            <Button 
+              size="lg"
+              onClick={handleStartInterview}
+              disabled={isLoadingQuestion}
+              className="w-full py-6 text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border-0 rounded-xl"
+            >
+              {isLoadingQuestion ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Generating Question...
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-5 w-5" />
+                  Start Interview
+                </>
+              )}
+            </Button>
             
-            <div className="text-center pt-4">
-              <Button 
-                size="lg" 
-                onClick={handleStartInterview}
-                disabled={isLoadingQuestion}
-                className="px-12 py-6 text-lg bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-              >
-                {isLoadingQuestion ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Preparing Interview...
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-5 w-5" />
-                    Start Interview
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
+            <Button 
+              variant="ghost"
+              onClick={() => setStage('intro')}
+              className="text-white/60 hover:text-white hover:bg-white/10"
+            >
+              Go Back
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -500,161 +599,211 @@ const Interview = () => {
   // Completed state
   if (stage === 'completed') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
-        <Card className="max-w-md p-8 text-center shadow-lg">
-          <CheckCircle className="h-20 w-20 mx-auto mb-4 text-green-500" />
-          <h2 className="text-2xl font-bold mb-2">Interview Complete!</h2>
-          <p className="text-muted-foreground mb-4">
-            Thank you for completing the interview. Your responses have been recorded.
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full bg-white/10 backdrop-blur-xl border-white/20 p-8 text-center">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 mx-auto flex items-center justify-center">
+              <CheckCircle className="h-12 w-12 text-white" />
+            </div>
+            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-full bg-green-500/30 animate-ping" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">Interview Complete!</h2>
+          <p className="text-white/60 mb-6">
+            Thank you for completing your interview. Your responses have been recorded.
           </p>
-          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground mt-2">Redirecting to results...</p>
+          <div className="flex items-center justify-center gap-2 text-white/40">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Redirecting to results...</span>
+          </div>
         </Card>
       </div>
     );
   }
 
-  // Main interview UI
+  // ==================== MAIN INTERVIEW UI - SINGLE QUESTION VIEW ====================
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
-      {/* Header */}
-      <div className="bg-white shadow-md border-b border-border py-4 px-6">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Minimal Header */}
+      <div className="bg-black/20 backdrop-blur-xl border-b border-white/10 py-4 px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-foreground font-semibold">AI Interview</h2>
-              <p className="text-muted-foreground text-sm">
-                {application?.job_post?.job_title || 'Interview'}
-              </p>
+              <p className="text-white/50 text-xs uppercase tracking-wider">Interview for</p>
+              <p className="text-white font-medium">{application?.job_post?.job_title}</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-6">
-            {/* Progress */}
-            <div className="text-right">
-              <p className="text-muted-foreground text-xs">Progress</p>
-              <p className="text-foreground font-mono">
-                {questionNumber} / {TOTAL_QUESTIONS}
-              </p>
-            </div>
-            
-            {/* Timer - only show when answering */}
-            {stage === 'answering' && (
-              <div className={`text-right ${timeLeft <= 10 ? 'animate-pulse' : ''}`}>
-                <p className="text-muted-foreground text-xs">Time Left</p>
-                <p className={`font-mono text-xl ${timeLeft <= 10 ? 'text-red-500' : 'text-foreground'}`}>
-                  {formatTime(timeLeft)}
-                </p>
-              </div>
-            )}
+          <div className="flex items-center gap-4">
+            {/* Audio Toggle */}
+            <button
+              onClick={() => {
+                setAudioEnabled(prev => !prev);
+                if (audioRef.current) {
+                  audioRef.current.pause();
+                  audioRef.current = null;
+                  setIsPlayingAudio(false);
+                }
+              }}
+              className={`p-2.5 rounded-xl transition-all ${
+                audioEnabled 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'bg-white/10 text-white/40'
+              }`}
+            >
+              {isPlayingAudio ? (
+                <Volume2 className="h-5 w-5 animate-pulse" />
+              ) : audioEnabled ? (
+                <Volume2 className="h-5 w-5" />
+              ) : (
+                <VolumeX className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
       </div>
-      
-      {/* Progress bar */}
-      <div className="px-6 py-2 bg-orange-50">
+
+      {/* Progress Bar */}
+      <div className="px-6 py-3 bg-black/10">
         <div className="max-w-4xl mx-auto">
-          <Progress value={(questionNumber / TOTAL_QUESTIONS) * 100} className="h-2" />
+          <div className="flex items-center justify-between text-sm text-white/60 mb-2">
+            <span>Question {questionNumber} of {TOTAL_QUESTIONS}</span>
+            <span>{Math.round((questionNumber / TOTAL_QUESTIONS) * 100)}% Complete</span>
+          </div>
+          <Progress 
+            value={(questionNumber / TOTAL_QUESTIONS) * 100} 
+            className="h-2 bg-white/10"
+          />
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 max-w-4xl mx-auto w-full p-6 flex flex-col">
-        {/* Messages */}
-        <Card className="flex-1 mb-4 bg-white shadow-md overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex gap-3 ${msg.role === 'candidate' ? 'flex-row-reverse' : ''}`}
-              >
-                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
-                  msg.role === 'interviewer' 
-                    ? 'bg-gradient-to-br from-primary to-blue-400' 
-                    : 'bg-gradient-to-br from-orange-400 to-orange-500'
-                }`}>
-                  {msg.role === 'interviewer' ? (
-                    <Bot className="h-5 w-5 text-white" />
-                  ) : (
-                    <User className="h-5 w-5 text-white" />
-                  )}
-                </div>
-                <div className={`max-w-[80%] ${msg.role === 'candidate' ? 'text-right' : ''}`}>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {msg.role === 'interviewer' ? 'AI Interviewer' : 'You'}
-                  </p>
-                  <div className={`p-4 rounded-2xl ${
-                    msg.role === 'interviewer'
-                      ? 'bg-slate-100 dark:bg-slate-700 text-left rounded-tl-none'
-                      : 'bg-primary text-white text-left rounded-tr-none'
-                  }`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                </div>
+      {/* Main Content - Single Question Focus */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-3xl w-full">
+          
+          {/* Loading Question */}
+          {stage === 'asking' && (
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mx-auto flex items-center justify-center mb-6">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
               </div>
-            ))}
-            
-            {/* Loading indicator for next question */}
-            {(isLoadingQuestion || isSubmitting) && stage === 'in_progress' && (
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-2xl rounded-tl-none">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">Thinking...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        </Card>
+              <h3 className="text-xl text-white mb-2">Preparing your next question...</h3>
+              <p className="text-white/50">Please wait a moment</p>
+            </Card>
+          )}
 
-        {/* Answer input - only show when answering */}
-        {stage === 'answering' && (
-          <Card className="bg-white shadow-md">
-            <CardContent className="p-4">
-              <div className="flex gap-3">
+          {/* Question Display & Answer */}
+          {stage === 'answering' && (
+            <div className="space-y-6">
+              {/* Timer */}
+              <div className="flex justify-center">
+                <div className={`px-6 py-3 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center gap-3 ${timeLeft <= 30 ? 'animate-pulse' : ''}`}>
+                  <Clock className={`h-5 w-5 ${getTimerColor()}`} />
+                  <span className={`font-mono text-2xl font-bold ${getTimerColor()}`}>
+                    {formatTime(timeLeft)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Question Card */}
+              <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-8">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <Bot className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white/50 text-sm uppercase tracking-wider mb-2">Question {questionNumber}</p>
+                    <p className="text-white text-xl leading-relaxed">{currentQuestion}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Answer Input */}
+              <Card className="bg-white/5 backdrop-blur-xl border-white/10 p-6">
+                <p className="text-white/50 text-sm uppercase tracking-wider mb-3">Your Answer</p>
                 <Textarea
                   ref={answerRef}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your answer here... (Press Ctrl+Enter to submit)"
-                  className="min-h-[100px] resize-none flex-1"
+                  placeholder="Type your answer here..."
+                  className="min-h-[150px] resize-none bg-white/5 border-white/10 text-white placeholder:text-white/30 text-lg focus:border-purple-500/50 focus:ring-purple-500/20 rounded-xl mb-4"
                   disabled={isSubmitting}
                   autoFocus
                 />
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={handleSubmitAnswer}
-                    disabled={isSubmitting}
-                    className="h-full px-6 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-5 w-5 mr-2" />
-                        Submit
-                      </>
-                    )}
-                  </Button>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/40 text-sm">
+                    <kbd className="px-2 py-1 rounded bg-white/10 text-white/60 text-xs mr-1">Ctrl+Enter</kbd>
+                    to submit
+                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/40 text-sm">{answer.length} chars</span>
+                    <Button
+                      onClick={handleSubmitAnswer}
+                      disabled={isSubmitting || !answer.trim()}
+                      size="lg"
+                      className="px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 rounded-xl disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="h-5 w-5 mr-2" />
+                          Submit
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Answer Submitted - Next Question */}
+          {stage === 'submitted' && !isSubmitting && (
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 mx-auto flex items-center justify-center mb-6">
+                <CheckCircle className="h-8 w-8 text-white" />
               </div>
-              <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                <span>Press Ctrl+Enter to submit</span>
-                <span>{answer.length} characters</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              <h3 className="text-2xl font-bold text-white mb-2">Answer Recorded!</h3>
+              <p className="text-white/60 mb-8">
+                {questionNumber >= TOTAL_QUESTIONS 
+                  ? "You've completed all questions. Click below to finish." 
+                  : "Your response has been saved. Ready for the next question?"}
+              </p>
+              <Button
+                onClick={handleNextQuestion}
+                disabled={isLoadingQuestion}
+                size="lg"
+                className="px-10 py-6 text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 rounded-xl"
+              >
+                {isLoadingQuestion ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Loading...
+                  </>
+                ) : questionNumber >= TOTAL_QUESTIONS ? (
+                  <>
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Complete Interview
+                  </>
+                ) : (
+                  <>
+                    Next Question
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
+              </Button>
+              {questionNumber < TOTAL_QUESTIONS && (
+                <p className="text-white/40 text-sm mt-4">
+                  {TOTAL_QUESTIONS - questionNumber} questions remaining
+                </p>
+              )}
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

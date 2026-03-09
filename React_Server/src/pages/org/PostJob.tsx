@@ -109,7 +109,7 @@ const PostJob = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="organization" 
         userName={user?.username}
@@ -222,7 +222,7 @@ const PostJob = () => {
 
         <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Job Posted Successfully!">
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-white/60">
               Share this link with candidates so they can apply for this position:
             </p>
             <div className="flex gap-2">
@@ -230,13 +230,13 @@ const PostJob = () => {
                 type="text"
                 value={applicationLink}
                 readOnly
-                className="flex-1 px-3 py-2 bg-muted border border-border rounded-md text-sm"
+                className="flex-1 px-3 py-2 bg-muted border border-white/10 rounded-md text-sm"
               />
               <Button onClick={copyToClipboard} variant="outline" size="sm">
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-white/60">
               Candidates will use this link to submit their resume and apply for the job. You'll be able to review applications in your dashboard.
             </p>
             <Button onClick={() => setShowModal(false)} className="w-full bg-gradient-to-r from-primary to-accent">

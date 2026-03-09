@@ -32,13 +32,13 @@ const CandidateLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md bg-white/10 backdrop-blur-xl border-white/20">
           <CardHeader>
-            <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-center bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
               Candidate Login
             </CardTitle>
           </CardHeader>
@@ -50,6 +50,7 @@ const CandidateLogin = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
               <FormInput 
                 label="Password" 
@@ -58,11 +59,12 @@ const CandidateLogin = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-accent to-accent/80"
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 border-0"
                 disabled={loading}
               >
                 {loading ? 'Logging in...' : 'Login'}
@@ -71,15 +73,15 @@ const CandidateLogin = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full"
+                className="w-full border-white/20 hover:bg-white/10 text-white"
                 onClick={() => navigate("/")}
               >
                 Back to Home
               </Button>
 
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-white/60">
                 Don't have an account?{" "}
-                <a href="/candidate/register" className="text-primary hover:underline">
+                <a href="/candidate/register" className="text-orange-400 hover:underline">
                   Register here
                 </a>
               </p>

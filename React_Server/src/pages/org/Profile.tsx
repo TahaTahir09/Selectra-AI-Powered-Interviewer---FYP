@@ -84,7 +84,7 @@ const OrgProfile = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="organization" 
         userName={user?.username}
@@ -100,13 +100,12 @@ const OrgProfile = () => {
                 Organization Profile
               </span>
             </h1>
-            <p className="text-muted-foreground">Manage your organization information and settings</p>
+            <p className="text-white/60">Manage your organization information and settings</p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Profile Picture Card */}
-            <Card>
-              <CardHeader>
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20"><CardHeader>
                 <CardTitle>Profile Picture</CardTitle>
               </CardHeader>
               <CardContent>
@@ -128,10 +127,10 @@ const OrgProfile = () => {
                       />
                     </label>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4 text-center">
+                  <p className="text-sm text-white/60 mt-4 text-center">
                     Click to upload new picture
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-white/60 mt-1">
                     Maximum size: 5MB
                   </p>
                 </div>
@@ -148,28 +147,28 @@ const OrgProfile = () => {
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <User className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Username</p>
+                      <p className="text-xs text-white/60">Username</p>
                       <p className="font-semibold">{user?.username || "Not set"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <Mail className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-xs text-white/60">Email</p>
                       <p className="font-semibold">{user?.email || "Not set"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <Building2 className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Account Type</p>
+                      <p className="text-xs text-white/60">Account Type</p>
                       <p className="font-semibold capitalize">{user?.user_type || "Organization"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <FileText className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Member Since</p>
+                      <p className="text-xs text-white/60">Member Since</p>
                       <p className="font-semibold">
                         {user?.date_joined ? new Date(user.date_joined).toLocaleDateString() : "N/A"}
                       </p>

@@ -3,10 +3,14 @@ Interview Service - Multi-model LLM approach for interview questions
 Uses the same fallback approach as CV parsing for reliability
 """
 import os
+from dotenv import load_dotenv
 import json
 import re
 import requests
 from typing import Dict, Any, List, Optional
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class InterviewService:
@@ -118,48 +122,35 @@ class InterviewService:
     def generate_initial_question(self, job_description: str, resume_summary: str) -> Dict[str, Any]:
         """Generate the first interview question based on job description and resume"""
         
-        system_prompt = """You are an expert technical interviewer conducting a highly personalized job interview.
+        system_prompt = """You are an expert interviewer. Your questions must be:
+1. SHORT - Maximum 1-2 sentences (under 30 words)
+2. SPECIFIC - Reference something from their CV
+3. CONVERSATIONAL - Sound natural, like a real interview
 
-CRITICAL RULES:
-1. NEVER ask generic questions like "Tell me about yourself" or "Why do you want this job?"
-2. EVERY question MUST reference SPECIFIC details from the candidate's CV (technologies, projects, companies, skills)
-3. Questions MUST be relevant to the job requirements
-4. Ask TECHNICAL questions about technologies/frameworks the candidate has listed
-5. Reference SPECIFIC projects, roles, or achievements from their CV
-
-You are testing if the candidate actually has the skills they claim on their CV."""
+NEVER ask generic questions. Always reference specific skills/projects from CV."""
         
-        user_prompt = f"""STRICT INSTRUCTION: Generate a highly specific opening question based on the candidate's ACTUAL CV content.
+        user_prompt = f"""Generate a SHORT opening question based on the CV.
 
-Job Description:
-{job_description[:2000]}
+Job: {job_description[:1500]}
 
-Candidate's Resume/CV Details:
-{resume_summary[:2000]}
+CV: {resume_summary[:1500]}
 
-ANALYZE the CV above and generate ONE opening question that:
-1. Mentions a SPECIFIC skill, technology, project, or experience FROM THEIR CV
-2. Relates to a requirement in the job description
-3. Tests their technical knowledge of something they claim to know
-4. Is NOT generic - must reference actual CV content
+RULES:
+- Maximum 25-30 words
+- Reference a SPECIFIC skill, technology, or project from their CV
+- Sound natural and conversational
+- NO multi-part questions
 
-EXAMPLES of GOOD questions:
-- "I see you worked with React and Redux at [Company]. Can you explain how you handled state management in a complex component?"
-- "Your CV mentions experience with AWS Lambda. How did you handle cold starts in your serverless architecture?"
-- "You listed Python and Django - tell me about the most challenging API you built with Django REST framework."
+GOOD examples (notice they're SHORT):
+- "I see you used Redis at Acme Corp. How did you handle cache invalidation?"
+- "Your CV mentions Kubernetes experience. What was your deployment strategy?"
+- "Tell me about the React dashboard you built at TechCo."
 
-EXAMPLES of BAD (prohibited) questions:
-- "Tell me about yourself" (too generic)
-- "Why are you interested in this role?" (not technical)
-- "What are your strengths?" (generic)
-
-Return your response as JSON:
-{{"question": "Your SPECIFIC question referencing their CV", "type": "technical_cv_based", "focus_area": "the specific skill/technology from CV", "cv_reference": "what from CV this question addresses"}}
-
-Return ONLY the JSON, no other text."""
+Return JSON:
+{{"question": "Your SHORT specific question", "focus_area": "skill/tech referenced"}}"""
 
         print("\n=== Generating Initial Interview Question ===")
-        response = self._call_llm(system_prompt, user_prompt)
+        response = self._call_llm(system_prompt, user_prompt, max_tokens=300)
         
         if response:
             data = self._parse_json_response(response)
@@ -167,9 +158,9 @@ Return ONLY the JSON, no other text."""
                 return {
                     'success': True,
                     'question': data['question'],
-                    'type': data.get('type', 'technical_cv_based'),
+                    'type': 'opening',
                     'focus_area': data.get('focus_area', 'technical'),
-                    'cv_reference': data.get('cv_reference', '')
+                    'requires_followup': True
                 }
         
         # Fallback: Try to extract a skill from resume and ask about it
@@ -177,7 +168,7 @@ Return ONLY the JSON, no other text."""
         return {
             'success': True,
             'question': fallback_question,
-            'type': 'technical_cv_based',
+            'type': 'opening',
             'focus_area': 'technical',
             'fallback': True
         }
@@ -198,9 +189,9 @@ Return ONLY the JSON, no other text."""
         
         if found_skills:
             skill = found_skills[0]
-            return f"I see you have experience with {skill}. Can you describe a challenging project where you used {skill} and explain the technical decisions you made?"
+            return f"Tell me about your experience with {skill}. What's one project where you used it?"
         
-        return "Looking at your experience, can you walk me through the most technically challenging project you've worked on and explain your approach?"
+        return "What's the most challenging technical problem you've solved recently?"
     
     def generate_followup_question(
         self, 
@@ -208,76 +199,93 @@ Return ONLY the JSON, no other text."""
         resume_summary: str, 
         conversation_history: List[Dict[str, str]],
         question_number: int,
-        total_questions: int = 10
+        total_questions: int = 5
     ) -> Dict[str, Any]:
-        """Generate a follow-up question based on conversation history"""
+        """Generate next question - mix of follow-ups and new questions based on job/resume"""
         
-        system_prompt = """You are an expert technical interviewer conducting a HIGHLY SPECIFIC interview.
-
-CRITICAL RULES - FOLLOW EXACTLY:
-1. NEVER ask generic questions. Every question MUST reference the candidate's CV or their previous answers.
-2. Ask DEEP TECHNICAL questions about technologies, frameworks, and tools mentioned in their CV.
-3. If they mention a project, ask about implementation details, challenges, architecture decisions.
-4. If they mention a technology (React, Python, AWS, etc.), ask specific technical questions about it.
-5. Verify their claimed expertise with scenario-based technical questions.
-6. Reference SPECIFIC skills from their CV that match the job requirements.
-
-You are verifying if the candidate ACTUALLY knows what they claim on their CV."""
+        import random
+        
+        # Extract the candidate's last answer for follow-up context
+        last_candidate_answer = ""
+        for msg in reversed(conversation_history):
+            if msg.get('role') == 'candidate':
+                last_candidate_answer = msg.get('content', '')
+                break
+        
+        # Extract topics already covered in conversation
+        covered_topics = self._extract_covered_topics(conversation_history)
+        
+        # Decide: follow-up (35%) vs new question (65%)
+        # But Q2 always follows up on Q1 for natural flow
+        should_followup = question_number == 2 or random.random() < 0.35
         
         # Format conversation history
         conversation_text = "\n".join([
             f"{'Interviewer' if msg.get('role') == 'interviewer' else 'Candidate'}: {msg.get('content', '')}"
-            for msg in conversation_history[-6:]  # Last 6 messages for context
+            for msg in conversation_history[-4:]  # Last 4 messages for context
         ])
         
-        # Determine question focus based on progress - but always CV/job specific
-        if question_number <= 2:
-            focus_hint = "Ask about a SPECIFIC project or role from their CV. Dig into technical details."
-        elif question_number <= 4:
-            focus_hint = "Ask a DEEP TECHNICAL question about a technology/framework they listed in their CV that's relevant to the job."
-        elif question_number <= 5:
-            focus_hint = "Ask a problem-solving question related to their stated experience. Use a scenario from the job domain."
+        if should_followup and last_candidate_answer:
+            # Generate follow-up question
+            return self._generate_followup(
+                job_description, resume_summary, conversation_text, 
+                last_candidate_answer, question_number, total_questions
+            )
         else:
-            focus_hint = "Ask about a skill gap or how they would apply their specific experience to this role's challenges."
+            # Generate new question from job requirements or resume
+            return self._generate_new_question(
+                job_description, resume_summary, conversation_text,
+                covered_topics, question_number, total_questions
+            )
+    
+    def _extract_covered_topics(self, conversation_history: List[Dict[str, str]]) -> str:
+        """Extract topics already discussed in conversation"""
+        topics = []
+        for msg in conversation_history:
+            if msg.get('role') == 'interviewer':
+                topics.append(msg.get('content', ''))
+        return " | ".join(topics[-5:])  # Last 5 questions as context
+    
+    def _generate_followup(
+        self,
+        job_description: str,
+        resume_summary: str,
+        conversation_text: str,
+        last_answer: str,
+        question_number: int,
+        total_questions: int
+    ) -> Dict[str, Any]:
+        """Generate a follow-up question based on the candidate's last answer"""
         
-        user_prompt = f"""STRICT INSTRUCTION: Generate a SPECIFIC technical question based on their CV and previous answers.
+        system_prompt = """You are an expert interviewer. Ask a SHORT follow-up based on their answer.
 
-Job Requirements:
-{job_description[:1500]}
+RULES:
+1. Maximum 25-30 words
+2. Reference something SPECIFIC from their last answer
+3. Sound natural and conversational
+4. Dig deeper into what they said"""
+        
+        user_prompt = f"""Generate a SHORT follow-up question.
 
-Candidate's CV/Resume Details:
-{resume_summary[:1500]}
+Their LAST ANSWER: "{last_answer[:800]}"
 
-Interview Conversation:
+Conversation so far:
 {conversation_text}
 
-Question {question_number} of {total_questions}.
-FOCUS: {focus_hint}
+Job context: {job_description[:500]}
 
-GENERATE the next question following these rules:
-1. MUST reference something SPECIFIC from their CV (a technology, project, company, skill)
-2. MUST be technically challenging - test their real knowledge
-3. Can follow up on something they said in previous answers
-4. MUST be relevant to the job requirements
-5. Ask "how" and "why" questions, not "what" questions
+Question {question_number}/{total_questions}
 
-GOOD question examples:
-- "You mentioned using Docker in your previous role. How did you handle container orchestration and what was your deployment strategy?"
-- "Your CV shows experience with PostgreSQL. Explain how you'd optimize a query that's running slow on a table with millions of rows."
-- "You worked on [specific project]. What was the most challenging technical decision you made and why?"
+GOOD follow-ups (SHORT):
+- "Interesting. How did you handle the scaling challenges?"
+- "What made you choose that approach?"
+- "What would you do differently?"
 
-BAD (prohibited) questions:
-- "What is your greatest weakness?" (generic)
-- "Where do you see yourself in 5 years?" (not technical)
-- "Tell me about a time you showed leadership" (generic behavioral)
-
-Return your response as JSON:
-{{"question": "Your SPECIFIC technical question", "type": "technical|deep_dive|scenario|architecture", "focus_area": "specific CV skill being tested", "cv_reference": "what from CV or previous answer this addresses"}}
-
-Return ONLY the JSON, no other text."""
+Return JSON:
+{{"question": "Your SHORT follow-up", "focus_area": "what you're probing"}}"""
 
         print(f"\n=== Generating Follow-up Question {question_number}/{total_questions} ===")
-        response = self._call_llm(system_prompt, user_prompt)
+        response = self._call_llm(system_prompt, user_prompt, max_tokens=300)
         
         if response:
             data = self._parse_json_response(response)
@@ -285,46 +293,93 @@ Return ONLY the JSON, no other text."""
                 return {
                     'success': True,
                     'question': data['question'],
-                    'type': data.get('type', 'technical'),
+                    'type': 'follow_up',
                     'focus_area': data.get('focus_area', 'technical'),
-                    'cv_reference': data.get('cv_reference', ''),
-                    'question_number': question_number
+                    'question_number': question_number,
+                    'requires_followup': question_number < total_questions
                 }
         
-        # Fallback: Generate CV-based question
-        fallback_question = self._generate_followup_fallback(resume_summary, conversation_history, question_number)
+        # Fallback
         return {
             'success': True,
-            'question': fallback_question,
-            'type': 'technical',
-            'focus_area': 'cv_based',
+            'question': "Can you elaborate on that with a specific example?",
+            'type': 'follow_up',
+            'focus_area': 'clarification',
             'question_number': question_number,
             'fallback': True
         }
     
-    def _generate_followup_fallback(self, resume_summary: str, conversation_history: List[Dict[str, str]], question_number: int) -> str:
-        """Generate a CV-specific fallback question"""
-        import re
+    def _generate_new_question(
+        self,
+        job_description: str,
+        resume_summary: str,
+        conversation_text: str,
+        covered_topics: str,
+        question_number: int,
+        total_questions: int
+    ) -> Dict[str, Any]:
+        """Generate a new question based on job requirements or resume skills not yet covered"""
         
-        # Extract technologies from resume
-        tech_patterns = r'\b(Python|Java|JavaScript|TypeScript|React|Angular|Vue|Node\.?js|Django|Flask|FastAPI|Spring|Boot|AWS|Azure|GCP|Docker|Kubernetes|SQL|PostgreSQL|MySQL|MongoDB|Redis|GraphQL|REST|API|microservices|CI/CD|Git|Linux|TensorFlow|PyTorch|Machine Learning|ML|AI|Agile|Scrum)\b'
+        system_prompt = """You are an expert interviewer. Ask a NEW question about a DIFFERENT topic.
+
+RULES:
+1. Maximum 25-30 words  
+2. Pick a skill/requirement from job description OR resume NOT discussed yet
+3. Be specific - reference a technology, project, or skill
+4. Sound natural and conversational"""
+
+        user_prompt = f"""Generate a NEW question about a different topic.
+
+Job Requirements:
+{job_description[:800]}
+
+Candidate CV:
+{resume_summary[:800]}
+
+Topics ALREADY discussed (avoid these):
+{covered_topics}
+
+Conversation so far:
+{conversation_text}
+
+Question {question_number}/{total_questions}
+
+Pick something from the job requirements or CV that HASN'T been covered yet.
+
+GOOD new questions (SHORT):
+- "Let's talk about AWS. What services have you used most?"
+- "I noticed you know PostgreSQL. How do you handle migrations?"
+- "Your CV mentions team leadership. How do you handle conflicts?"
+- "What's your approach to code review?"
+
+Return JSON:
+{{"question": "Your SHORT new question", "focus_area": "skill/topic being explored"}}"""
+
+        print(f"\n=== Generating NEW Question {question_number}/{total_questions} ===")
+        response = self._call_llm(system_prompt, user_prompt, max_tokens=300)
         
-        found_skills = list(set(re.findall(tech_patterns, resume_summary, re.IGNORECASE)))
+        if response:
+            data = self._parse_json_response(response)
+            if data.get('question'):
+                return {
+                    'success': True,
+                    'question': data['question'],
+                    'type': 'new_topic',
+                    'focus_area': data.get('focus_area', 'technical'),
+                    'question_number': question_number,
+                    'requires_followup': question_number < total_questions
+                }
         
-        # Different question templates based on question number
-        if question_number <= 2 and found_skills:
-            skill = found_skills[0]
-            return f"Can you explain a specific technical challenge you faced while working with {skill} and how you solved it?"
-        elif question_number <= 3 and len(found_skills) > 1:
-            skill = found_skills[1] if len(found_skills) > 1 else found_skills[0]
-            return f"Your resume mentions {skill}. What's the most complex feature or system you've built using it?"
-        elif question_number <= 4 and found_skills:
-            skill = found_skills[min(2, len(found_skills)-1)]
-            return f"How would you approach debugging a critical performance issue in a {skill} application?"
-        elif question_number <= 5 and found_skills:
-            return f"Given your experience with {', '.join(found_skills[:3])}, how do you ensure code quality and maintainability in your projects?"
-        else:
-            return "Based on your technical background, what architectural decisions would you make for a new project and why?"
+        # Fallback: Generate CV-based question
+        fallback_question = self._generate_followup_fallback(resume_summary, [], question_number)
+        return {
+            'success': True,
+            'question': fallback_question,
+            'type': 'new_topic',
+            'focus_area': 'cv_based',
+            'question_number': question_number,
+            'fallback': True
+        }
     
     def evaluate_answer(
         self,

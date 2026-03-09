@@ -383,4 +383,34 @@ export const flaskAPI = {
   }
 };
 
+// Interview Results API (Django backend)
+export const interviewResultsAPI = {
+  // Save interview results to Django
+  saveResults: async (data: {
+    interview_token: string;
+    overall_score: number;
+    recommendation: 'recommend' | 'consider' | 'not_recommend';
+    summary: string;
+    strengths: string[];
+    areas_for_improvement: string[];
+    cv_verification: string;
+    job_fit: string;
+    questions_and_answers: Array<{
+      question: string;
+      answer: string;
+      score: number;
+      feedback: string;
+    }>;
+  }) => {
+    const response = await api.post('/core/interview-results/', data);
+    return response.data;
+  },
+
+  // Get interview results for HR review
+  getResults: async (interviewToken: string) => {
+    const response = await api.get(`/core/interview-results/${interviewToken}/`);
+    return response.data;
+  }
+};
+
 export default api;

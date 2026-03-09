@@ -73,7 +73,7 @@ const CandidateDashboard = () => {
   const resultsApps = applications.filter(app => app.status === 'accepted' || app.status === 'rejected').length;
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="candidate" 
         userName={user?.username}
@@ -86,52 +86,52 @@ const CandidateDashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-2">
-            <span className="text-orange-500">Welcome</span>
-            <span className="text-gray-900">, {user?.username || "Candidate"}</span>
+            <span className="text-purple-400">Welcome</span>
+            <span className="text-white">, {user?.username || "Candidate"}</span>
           </h1>
-          <p className="text-lg text-muted-foreground">Track your applications and interview progress</p>
+          <p className="text-lg text-white/60">Track your applications and interview progress</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <Briefcase className="h-10 w-10 text-blue-500 mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Jobs Applied</p>
+                <p className="text-sm text-white/60 mb-1">Jobs Applied</p>
                 <p className="text-3xl font-bold text-blue-500">
                   {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : applications.length}
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
-                <Clock className="h-10 w-10 text-orange-500 mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Pending</p>
-                <p className="text-3xl font-bold text-orange-500">
+                <Clock className="h-10 w-10 text-purple-400 mb-2" />
+                <p className="text-sm text-white/60 mb-1">Pending</p>
+                <p className="text-3xl font-bold text-purple-400">
                   {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : pendingApps}
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <CheckCircle className="h-10 w-10 text-green-500 mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Reviewed</p>
+                <p className="text-sm text-white/60 mb-1">Reviewed</p>
                 <p className="text-3xl font-bold text-green-500">
                   {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : scheduledApps}
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <BarChart className="h-10 w-10 text-purple-500 mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Results</p>
+                <p className="text-sm text-white/60 mb-1">Results</p>
                 <p className="text-3xl font-bold text-purple-500">
                   {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : resultsApps}
                 </p>
@@ -141,10 +141,10 @@ const CandidateDashboard = () => {
         </div>
 
         {/* Start Interview Card */}
-        <Card className="mb-8 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-orange-50 to-white border-b">
+        <Card className="mb-8 shadow-lg bg-white/10 backdrop-blur-xl border-white/20">
+          <CardHeader className="bg-gradient-to-r from-white/10 to-white/5 border-b border-white/10">
             <CardTitle className="text-2xl flex items-center gap-2">
-              <Clock className="h-6 w-6 text-orange-500" />
+              <Clock className="h-6 w-6 text-purple-400" />
               Start New Interview
             </CardTitle>
           </CardHeader>
@@ -169,15 +169,15 @@ const CandidateDashboard = () => {
 
         {/* Ready for Interview - Applications with auto-generated interview links */}
         {applications.filter(app => app.interview_link).length > 0 && (
-          <Card className="shadow-lg border-2 border-green-200">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-white border-b">
-              <CardTitle className="text-2xl flex items-center gap-2 text-green-700">
+          <Card className="shadow-lg border-2 border-green-500/30 bg-white/10 backdrop-blur-xl">
+            <CardHeader className="bg-gradient-to-r from-green-500/20 to-white/5 border-b border-white/10">
+          <CardTitle className="text-2xl flex items-center gap-2 text-green-400">
                 <Link className="h-6 w-6" />
                 Ready for Interview
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-white/60 mb-4">
                 You are eligible to take the interview for these applications.
               </p>
               <div className="space-y-4">
@@ -186,10 +186,10 @@ const CandidateDashboard = () => {
                   .map((app) => (
                     <div
                       key={app.id}
-                      className="flex items-center justify-between p-4 border-2 border-green-100 rounded-xl bg-green-50/50 hover:shadow-md transition-all"
+                      className="flex items-center justify-between p-4 border-2 border-green-500/30 rounded-xl bg-green-500/10 hover:shadow-md hover:bg-green-500/20 transition-all"
                     >
                       <div>
-                        <h3 className="font-bold text-lg text-foreground mb-1">
+                        <h3 className="font-bold text-lg text-white mb-1">
                           {app.job_post?.job_title || "Job Title"}
                         </h3>
                       </div>
@@ -211,8 +211,8 @@ const CandidateDashboard = () => {
         )}
 
         {/* Recent Applications */}
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
+        <Card className="shadow-lg bg-white/10 backdrop-blur-xl border-white/20">
+          <CardHeader className="bg-gradient-to-r from-white/10 to-white/5 border-b border-white/10">
             <CardTitle className="text-2xl flex items-center gap-2">
               <Briefcase className="h-6 w-6 text-blue-500" />
               Recent Applications
@@ -225,31 +225,31 @@ const CandidateDashboard = () => {
               </div>
             ) : applications.length === 0 ? (
               <div className="text-center py-12">
-                <Briefcase className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No applications yet</p>
-                <p className="text-sm text-muted-foreground">Start applying to jobs to see them here</p>
+                <Briefcase className="h-16 w-16 text-white/60/30 mx-auto mb-4" />
+                <p className="text-white/60 mb-4">No applications yet</p>
+                <p className="text-sm text-white/60">Start applying to jobs to see them here</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {applications.slice(0, 5).map((app) => (
                   <div
                     key={app.id}
-                    className="flex items-center justify-between p-6 border-2 border-border rounded-xl hover:shadow-md hover:border-orange-200 transition-all"
+                    className="flex items-center justify-between p-6 border-2 border-white/10 rounded-xl hover:shadow-md hover:border-purple-500/30 transition-all"
                   >
                     <div>
-                      <h3 className="font-bold text-lg text-foreground mb-1">
+                      <h3 className="font-bold text-lg text-white mb-1">
                         {app.job_post?.job_title || "Job Title"}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-white/60">
                         Applied {new Date(app.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <span className={`px-4 py-2 text-sm font-semibold rounded-full ${
-                      app.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      app.status === 'reviewed' ? 'bg-blue-100 text-blue-700' :
-                      app.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                      app.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
+                      app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                      app.status === 'reviewed' ? 'bg-blue-500/20 text-blue-400' :
+                      app.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
+                      app.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                      'bg-gray-500/20 text-gray-400'
                     }`}>
                       {app.status}
                     </span>

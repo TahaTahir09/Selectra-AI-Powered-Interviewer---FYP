@@ -25,7 +25,7 @@ const FormInput = ({
 }: FormInputProps) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor={name || label} className="text-sm font-medium text-foreground">
+      <Label htmlFor={name || label} className="text-sm font-medium text-white">
         {label}
       </Label>
       {multiline ? (

@@ -38,13 +38,13 @@ const OrgRegister = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl">
+        <Card className="w-full max-w-2xl bg-white/10 backdrop-blur-xl border-white/20">
           <CardHeader>
-            <CardTitle className="text-2xl text-center bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <CardTitle className="text-2xl text-center bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Register Your Organization
             </CardTitle>
           </CardHeader>
@@ -57,6 +57,7 @@ const OrgRegister = () => {
                 value={formData.username}
                 onChange={handleChange}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
               <FormInput 
                 label="Email" 
@@ -66,6 +67,7 @@ const OrgRegister = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
               <FormInput 
                 label="Company Name" 
@@ -74,6 +76,7 @@ const OrgRegister = () => {
                 value={formData.first_name}
                 onChange={handleChange}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
               <FormInput 
                 label="Password" 
@@ -83,6 +86,7 @@ const OrgRegister = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
               <FormInput 
                 label="Confirm Password" 
@@ -92,11 +96,12 @@ const OrgRegister = () => {
                 value={formData.password2}
                 onChange={handleChange}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40"
               />
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-primary to-primary/80"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0"
                 disabled={loading}
               >
                 {loading ? 'Registering...' : 'Register Organization'}
@@ -105,7 +110,7 @@ const OrgRegister = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full"
+                className="w-full border-white/20 hover:bg-white/10 text-white"
                 onClick={() => navigate("/")}
               >
                 Back to Home

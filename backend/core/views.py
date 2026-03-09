@@ -23,7 +23,8 @@ from .serializers import (
     ApplicationCreateSerializer,
     ApplicationUpdateSerializer,
     InterviewSerializer,
-    InterviewCreateUpdateSerializer
+    InterviewCreateUpdateSerializer,
+    InterviewResultsSerializer
 )
 
 User = get_user_model()
@@ -780,5 +781,113 @@ def parse_cv(request):
         
         return Response(
             {'error': f'Failed to parse CV: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def save_interview_results(request):
+    """
+    Save interview results for an application.
+    
+    Expects JSON body with:
+    - interview_token: The unique token from interview_link
+    - overall_score: Score out of 10
+    - recommendation: 'recommend', 'consider', or 'not_recommend'
+    - summary: Text summary of interview
+    - strengths: List of strengths
+    - areas_for_improvement: List of areas to improve
+    - cv_verification: How well CV was verified
+    - job_fit: Assessment of job fit
+    - questions_and_answers: List of dicts with question, answer, score, feedback
+    """
+    from django.utils import timezone
+    
+    serializer = InterviewResultsSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {'error': 'Invalid data', 'details': serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    data = serializer.validated_data
+    interview_token = data.get('interview_token')
+    
+    # Find application by interview link token
+    try:
+        application = Application.objects.filter(
+            interview_link__icontains=interview_token
+        ).first()
+        
+        if not application:
+            return Response(
+                {'error': 'Application not found for this interview token'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Store interview results
+        application.interview_results = {
+            'overall_score': data.get('overall_score'),
+            'recommendation': data.get('recommendation'),
+            'summary': data.get('summary'),
+            'strengths': data.get('strengths', []),
+            'areas_for_improvement': data.get('areas_for_improvement', []),
+            'cv_verification': data.get('cv_verification', ''),
+            'job_fit': data.get('job_fit', ''),
+            'questions_and_answers': data.get('questions_and_answers', [])
+        }
+        application.interview_completed_at = timezone.now()
+        application.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Interview results saved successfully',
+            'application_id': application.id
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to save interview results: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_interview_results(request, interview_token):
+    """
+    Get interview results for HR review.
+    Returns detailed Q&A with per-question scores.
+    """
+    try:
+        application = Application.objects.filter(
+            interview_link__icontains=interview_token
+        ).first()
+        
+        if not application:
+            return Response(
+                {'error': 'Application not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if not application.interview_results:
+            return Response(
+                {'error': 'No interview results available'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'success': True,
+            'candidate_name': application.candidate_name,
+            'candidate_email': application.candidate_email,
+            'job_title': application.job_post.job_title if application.job_post else 'Unknown',
+            'interview_completed_at': application.interview_completed_at,
+            'results': application.interview_results
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to get interview results: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

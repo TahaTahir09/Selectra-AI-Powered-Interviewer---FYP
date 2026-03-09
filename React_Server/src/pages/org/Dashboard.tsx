@@ -67,7 +67,7 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="organization" 
         userName={user?.username} 
@@ -80,32 +80,32 @@ const OrgDashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-2">
-            <span className="text-orange-500">Welcome back</span>
-            <span className="text-gray-900">, {user?.username || "Organization"}</span>
+            <span className="text-purple-400">Welcome back</span>
+            <span className="text-white">, {user?.username || "Organization"}</span>
           </h1>
-          <p className="text-lg text-muted-foreground">Manage your job postings and interview processes</p>
+          <p className="text-lg text-white/60">Manage your job postings and interview processes</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Active Jobs</p>
-                  <p className="text-3xl font-bold text-orange-500">
+                  <p className="text-sm text-white/60 mb-1">Active Jobs</p>
+                  <p className="text-3xl font-bold text-purple-400">
                     {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : jobs.length}
                   </p>
                 </div>
-                <Briefcase className="h-12 w-12 text-orange-500/20" />
+                <Briefcase className="h-12 w-12 text-purple-400/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Total Applicants</p>
+                  <p className="text-sm text-white/60 mb-1">Total Applicants</p>
                   <p className="text-3xl font-bold text-blue-500">
                     {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : totalApplications}
                   </p>
@@ -114,11 +114,11 @@ const OrgDashboard = () => {
               </div>
             </CardContent>
           </Card>
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 hover:bg-white/15 transition-all duration-300">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Interviews</p>
+                  <p className="text-sm text-white/60 mb-1">Interviews</p>
                   <p className="text-3xl font-bold text-green-500">
                     {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : totalInterviews}
                   </p>
@@ -141,7 +141,7 @@ const OrgDashboard = () => {
           <Button 
             onClick={() => navigate("/org/jobs")}
             variant="outline" 
-            className="h-24 text-lg border-2 hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all"
+            className="h-24 text-lg border-2 hover:bg-white/10 shadow-lg hover:shadow-xl transition-all"
           >
             <FileText className="mr-2 h-6 w-6" />
             View All Job Posts
@@ -149,10 +149,10 @@ const OrgDashboard = () => {
         </div>
 
         {/* Active Jobs Section */}
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-orange-50 to-white border-b">
+        <Card className="shadow-lg bg-white/10 backdrop-blur-xl border-white/20">
+          <CardHeader className="bg-gradient-to-r from-white/10 to-white/5 border-b border-white/10">
             <CardTitle className="text-2xl flex items-center gap-2">
-              <Briefcase className="h-6 w-6 text-orange-500" />
+              <Briefcase className="h-6 w-6 text-purple-400" />
               Active Job Postings
             </CardTitle>
           </CardHeader>
@@ -163,8 +163,8 @@ const OrgDashboard = () => {
               </div>
             ) : jobs.length === 0 ? (
               <div className="text-center py-12">
-                <Briefcase className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No job postings yet</p>
+                <Briefcase className="h-16 w-16 text-white/60/30 mx-auto mb-4" />
+                <p className="text-white/60 mb-4">No job postings yet</p>
                 <Button onClick={() => navigate("/org/post-job")} className="bg-gradient-to-r from-primary to-accent">
                   Post Your First Job
                 </Button>
@@ -174,24 +174,24 @@ const OrgDashboard = () => {
                 {jobs.map((job) => (
                   <div
                     key={job.id}
-                    className="flex items-center justify-between p-6 border-2 border-border rounded-xl hover:shadow-md hover:border-orange-200 transition-all"
+                    className="flex items-center justify-between p-6 border-2 border-white/10 rounded-xl hover:shadow-md hover:border-purple-500/30 transition-all bg-white/5"
                   >
                     <div>
-                      <h3 className="font-bold text-lg text-foreground mb-1">{job.job_title}</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <h3 className="font-bold text-lg text-white mb-1">{job.job_title}</h3>
+                      <p className="text-sm text-white/60">
                         {job.application_count || 0} applicants • {new Date(job.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`px-4 py-2 text-sm font-semibold rounded-full ${
-                        job.status === 'active' ? 'bg-green-100 text-green-700' :
-                        job.status === 'closed' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
+                        job.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                        job.status === 'closed' ? 'bg-red-500/20 text-red-400' :
+                        'bg-gray-500/20 text-gray-400'
                       }`}>
                         {job.status}
                       </span>
                       <Button 
-                        className="bg-orange-500 hover:bg-orange-600" 
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500" 
                         size="sm"
                         onClick={() => navigate(`/org/job/${job.id}`)}
                       >
@@ -206,8 +206,8 @@ const OrgDashboard = () => {
         </Card>
 
         {/* Recent Applications Section */}
-        <Card className="shadow-lg mt-8">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
+        <Card className="shadow-lg mt-8 bg-white/10 backdrop-blur-xl border-white/20">
+          <CardHeader className="bg-gradient-to-r from-white/10 to-white/5 border-b border-white/10">
             <CardTitle className="text-2xl flex items-center gap-2">
               <Users className="h-6 w-6 text-blue-500" />
               Recent Applications
@@ -220,26 +220,26 @@ const OrgDashboard = () => {
               </div>
             ) : recentApplications.length === 0 ? (
               <div className="text-center py-12">
-                <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                <p className="text-muted-foreground">No applications yet</p>
+                <FileText className="h-16 w-16 text-white/60/30 mx-auto mb-4" />
+                <p className="text-white/60">No applications yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {recentApplications.map((app) => (
                   <div
                     key={app.id}
-                    className="flex items-center justify-between p-6 border-2 border-border rounded-xl hover:shadow-md hover:border-blue-200 transition-all"
+                    className="flex items-center justify-between p-6 border-2 border-white/10 rounded-xl hover:shadow-md hover:border-blue-500/30 transition-all bg-white/5"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-bold text-lg text-foreground">{app.candidate_name}</h3>
+                        <h3 className="font-bold text-lg text-white">{app.candidate_name}</h3>
                         {app.similarity_score !== null && app.similarity_score !== undefined && (
                           <Badge 
                             variant="outline" 
                             className={`text-sm font-semibold ${
-                              app.similarity_score >= 75 ? 'bg-green-50 text-green-700 border-green-200' :
-                              app.similarity_score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                              'bg-red-50 text-red-700 border-red-200'
+                              app.similarity_score >= 75 ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              app.similarity_score >= 50 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                              'bg-red-500/20 text-red-400 border-red-500/30'
                             }`}
                           >
                             <TrendingUp className="h-3 w-3 mr-1" />
@@ -253,7 +253,7 @@ const OrgDashboard = () => {
                           {app.status}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-white/60">
                         <span className="flex items-center gap-1">
                           <Briefcase className="h-4 w-4" />
                           {app.job_post?.job_title || app.job_title || 'Unknown Position'}
@@ -269,7 +269,7 @@ const OrgDashboard = () => {
                       </div>
                     </div>
                     <Button 
-                      className="bg-blue-500 hover:bg-blue-600" 
+                      className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500" 
                       size="sm"
                       onClick={() => {
                         // Get the job post ID directly from the application

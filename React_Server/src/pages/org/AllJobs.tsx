@@ -63,18 +63,18 @@ const AllJobs = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-700 border-green-200';
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'closed':
-        return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'inactive':
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'bg-gray-500/20 text-gray-400 border-white/10';
       default:
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
         userType="organization" 
         userName={user?.username} 
@@ -90,15 +90,15 @@ const AllJobs = () => {
                 All Job Postings
               </span>
             </h1>
-            <p className="text-muted-foreground">Manage and view all your job listings</p>
+            <p className="text-white/60">Manage and view all your job listings</p>
           </div>
 
           {/* Search and Filter Bar */}
-          <Card className="mb-6">
+          <Card className="mb-6 bg-white/10 backdrop-blur-xl border-white/20">
             <CardContent className="p-4">
               <div className="flex gap-4">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
                   <Input
                     placeholder="Search by job title or location..."
                     value={searchTerm}
@@ -122,8 +122,7 @@ const AllJobs = () => {
           </Card>
 
           {/* Jobs List */}
-          <Card>
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-white border-b">
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20"><CardHeader className="bg-gradient-to-r from-white/10 to-white/5 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-primary" />
                 {filteredJobs.length} Job{filteredJobs.length !== 1 ? 's' : ''} Found
@@ -136,8 +135,8 @@ const AllJobs = () => {
                 </div>
               ) : filteredJobs.length === 0 ? (
                 <div className="text-center py-12">
-                  <Briefcase className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">
+                  <Briefcase className="h-16 w-16 text-white/60/30 mx-auto mb-4" />
+                  <p className="text-white/60 mb-4">
                     {searchTerm ? "No jobs found matching your search" : "No job postings yet"}
                   </p>
                   {!searchTerm && (
@@ -154,24 +153,24 @@ const AllJobs = () => {
                   {filteredJobs.map((job) => (
                     <div
                       key={job.id}
-                      className="flex items-start justify-between p-6 border-2 border-border rounded-xl hover:shadow-md hover:border-primary/50 transition-all"
+                      className="flex items-start justify-between p-6 border-2 border-white/10 rounded-xl hover:shadow-md hover:border-primary/50 transition-all"
                     >
                       <div className="flex-1">
-                        <h3 className="font-bold text-xl text-foreground mb-2">{job.job_title}</h3>
+                        <h3 className="font-bold text-xl text-white mb-2">{job.job_title}</h3>
                         <div className="flex flex-wrap gap-4 mb-3">
-                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <span className="text-sm text-white/60 flex items-center gap-1">
                             📍 {job.location || "Not specified"}
                           </span>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-white/60">
                             💼 {job.employment_type || "Full-time"}
                           </span>
                           {job.salary_range && (
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-white/60">
                               💰 {job.salary_range}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 text-sm text-white/60">
                           <span>{job.application_count || 0} applicants</span>
                           <span>•</span>
                           <span>Posted {new Date(job.created_at).toLocaleDateString()}</span>

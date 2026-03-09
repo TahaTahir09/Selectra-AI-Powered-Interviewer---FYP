@@ -110,6 +110,8 @@ class ApplicationListSerializer(serializers.ModelSerializer):
     """
     job_post = JobPostListSerializer(read_only=True)
     interview_count = serializers.SerializerMethodField()
+    has_interview_results = serializers.SerializerMethodField()
+    interview_overall_score = serializers.SerializerMethodField()
     
     class Meta:
         model = Application
@@ -118,13 +120,22 @@ class ApplicationListSerializer(serializers.ModelSerializer):
             'candidate_phone', 'candidate_location', 'candidate_linkedin',
             'candidate_github', 'candidate_skills', 'candidate_education',
             'candidate_experience', 'years_of_experience',
-            'status', 'similarity_score', 'interview_link', 'interview_count', 'created_at', 
-            'updated_at', 'cv_url', 'parsed_resume'
+            'status', 'similarity_score', 'interview_link', 'interview_count', 
+            'interview_results', 'interview_completed_at', 'has_interview_results',
+            'interview_overall_score', 'created_at', 'updated_at', 'cv_url', 'parsed_resume'
         ]
         read_only_fields = ['id', 'similarity_score', 'interview_link', 'created_at', 'updated_at']
     
     def get_interview_count(self, obj):
         return obj.interviews.count()
+    
+    def get_has_interview_results(self, obj):
+        return obj.interview_results is not None
+    
+    def get_interview_overall_score(self, obj):
+        if obj.interview_results and 'overall_score' in obj.interview_results:
+            return obj.interview_results.get('overall_score')
+        return None
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -139,9 +150,28 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'job_post', 'candidate', 'candidate_name',
             'candidate_email', 'cv_url', 'status', 'parsed_resume',
-            'embedding_vector_reference', 'similarity_score', 'interview_link', 'created_at', 'updated_at'
+            'embedding_vector_reference', 'similarity_score', 'interview_link',
+            'interview_results', 'interview_completed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'candidate', 'similarity_score', 'interview_link', 'created_at', 'updated_at']
+
+
+class InterviewResultsSerializer(serializers.Serializer):
+    """
+    Serializer for saving interview results.
+    """
+    interview_token = serializers.CharField(help_text="Interview link token to identify the application")
+    overall_score = serializers.IntegerField(min_value=1, max_value=10)
+    recommendation = serializers.ChoiceField(choices=['recommend', 'consider', 'not_recommend'])
+    summary = serializers.CharField()
+    strengths = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    areas_for_improvement = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    cv_verification = serializers.CharField(required=False, default='')
+    job_fit = serializers.CharField(required=False, default='')
+    questions_and_answers = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="List of Q&A with scores: [{question, answer, score, feedback}]"
+    )
 
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):

@@ -11,10 +11,10 @@ interface HeaderProps {
 
 const Header = ({ userType, userName, onLogout }: HeaderProps) => {
   return (
-    <header className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+    <header className="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center">
-          <img src={selectraLogo} alt="Selectra" className="h-24" />
+          <img src={selectraLogo} alt="Selectra" className="h-20 brightness-0 invert" />
         </Link>
 
         <div className="flex items-center gap-4">
@@ -22,14 +22,14 @@ const Header = ({ userType, userName, onLogout }: HeaderProps) => {
             <>
               <div className="flex items-center gap-2 text-sm">
                 {userType === "organization" ? (
-                  <Building2 className="h-4 w-4 text-primary" />
+                  <Building2 className="h-4 w-4 text-purple-400" />
                 ) : (
-                  <User className="h-4 w-4 text-primary" />
+                  <User className="h-4 w-4 text-purple-400" />
                 )}
-                <span className="text-foreground font-medium">{userName}</span>
+                <span className="text-white font-medium">{userName}</span>
               </div>
               {onLogout && (
-                <Button variant="ghost" size="sm" onClick={onLogout}>
+                <Button variant="ghost" size="sm" onClick={onLogout} className="text-white/60 hover:text-white hover:bg-white/10">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -37,10 +37,10 @@ const Header = ({ userType, userName, onLogout }: HeaderProps) => {
             </>
           ) : (
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="text-white/60 hover:text-white hover:bg-white/10">
                 <Link to="/org/login">Organization</Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="text-white/60 hover:text-white hover:bg-white/10">
                 <Link to="/candidate/login">Candidate</Link>
               </Button>
             </div>

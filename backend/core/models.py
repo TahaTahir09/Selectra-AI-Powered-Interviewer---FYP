@@ -135,6 +135,14 @@ class Application(models.Model):
     similarity_score = models.FloatField(null=True, blank=True, help_text="AI-calculated similarity score between CV and job description (0-1)")
     interview_link = models.CharField(max_length=255, blank=True, null=True, help_text="Auto-generated unique interview link when similarity score >= 50%")
     
+    # Interview results storage
+    interview_results = models.JSONField(
+        null=True, 
+        blank=True, 
+        help_text="Stores complete interview results including Q&A with per-question scores"
+    )
+    interview_completed_at = models.DateTimeField(null=True, blank=True, help_text="When the AI interview was completed")
+    
     class Meta:
         db_table = 'applications'
         verbose_name = 'Application'

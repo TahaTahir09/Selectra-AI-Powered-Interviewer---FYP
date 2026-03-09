@@ -39,28 +39,28 @@ const Sidebar = ({ userType, userName, userEmail, onLogout }: SidebarProps) => {
   const menuItems = userType === "organization" ? organizationMenuItems : candidateMenuItems;
 
   return (
-    <div className="w-64 bg-white border-r border-border h-screen fixed left-0 top-0 flex flex-col shadow-sm">
+    <div className="w-64 bg-black/40 backdrop-blur-xl border-r border-white/10 h-screen fixed left-0 top-0 flex flex-col">
       {/* Logo */}
-      <div className="p-3 border-b border-border">
+      <div className="p-3 border-b border-white/10">
         <Link to="/" className="flex items-center justify-center">
-          <img src={selectraLogo} alt="Selectra" className="h-16" />
+          <img src={selectraLogo} alt="Selectra" className="h-14 brightness-0 invert" />
         </Link>
       </div>
 
       {/* User Profile Section */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
             <AvatarImage src="" alt={userName} />
-            <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-white">
+            <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
               {userName?.substring(0, 2).toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">
+            <p className="text-sm font-semibold text-white truncate">
               {userName || "User"}
             </p>
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-xs text-white/60 truncate">
               {userEmail || ""}
             </p>
           </div>
@@ -81,8 +81,8 @@ const Sidebar = ({ userType, userName, userEmail, onLogout }: SidebarProps) => {
                     variant={isActive ? "default" : "ghost"}
                     className={`w-full justify-start gap-3 ${
                       isActive 
-                        ? "bg-gradient-to-r from-primary to-accent text-white" 
-                        : "hover:bg-muted"
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
+                        : "text-white/60 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -96,11 +96,11 @@ const Sidebar = ({ userType, userName, userEmail, onLogout }: SidebarProps) => {
       </nav>
 
       {/* Logout Button */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-white/10">
         <Button
           onClick={onLogout}
           variant="outline"
-          className="w-full justify-start gap-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+          className="w-full justify-start gap-3 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300"
         >
           <LogOut className="h-5 w-5" />
           <span>Logout</span>

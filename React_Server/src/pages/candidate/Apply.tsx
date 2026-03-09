@@ -386,7 +386,7 @@ const Apply = () => {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Redirecting to login...</p>
+            <p className="text-center text-white/60">Redirecting to login...</p>
           </CardContent>
         </Card>
       </div>
@@ -406,7 +406,7 @@ const Apply = () => {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Job not found</p>
+            <p className="text-center text-white/60">Job not found</p>
             <Button onClick={() => navigate("/candidate")} className="w-full mt-4">
               Back to Home
             </Button>
@@ -417,14 +417,13 @@ const Apply = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Header userType="candidate" userName={user?.username} />
       
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Job Details Card */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20"><CardHeader>
               <CardTitle className="text-2xl">{job.job_title}</CardTitle>
               <CardDescription>
                 {job.location} • {job.employment_type}
@@ -433,7 +432,7 @@ const Apply = () => {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">Job Description</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.job_description}</p>
+                <p className="text-sm text-white/60 whitespace-pre-wrap">{job.job_description}</p>
               </div>
               
               {job.required_skills && job.required_skills.length > 0 && (
@@ -452,29 +451,28 @@ const Apply = () => {
               {job.experience_required && (
                 <div>
                   <h3 className="font-semibold mb-2">Experience Required</h3>
-                  <p className="text-sm text-muted-foreground">{job.experience_required}</p>
+                  <p className="text-sm text-white/60">{job.experience_required}</p>
                 </div>
               )}
 
               {job.responsibilities && (
                 <div>
                   <h3 className="font-semibold mb-2">Responsibilities</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.responsibilities}</p>
+                  <p className="text-sm text-white/60 whitespace-pre-wrap">{job.responsibilities}</p>
                 </div>
               )}
 
               {job.salary_range && (
                 <div>
                   <h3 className="font-semibold mb-2">Salary Range</h3>
-                  <p className="text-sm text-muted-foreground">{job.salary_range}</p>
+                  <p className="text-sm text-white/60">{job.salary_range}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Application Form Card */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20"><CardHeader>
               <CardTitle>Submit Your Application</CardTitle>
               <CardDescription>
                 Upload your CV and we'll automatically extract your information
@@ -498,7 +496,7 @@ const Apply = () => {
                   return (
                     <div className="space-y-6">
                       {/* Success Alert */}
-                      <Alert className="bg-green-50 border-green-200">
+                      <Alert className="bg-green-50 border-green-500/30">
                         <CheckCircle className="h-4 w-4 text-green-600" />
                         <AlertDescription className="ml-2">
                           <p className="font-semibold text-green-900">CV parsed successfully!</p>
@@ -509,7 +507,7 @@ const Apply = () => {
                       </Alert>
 
                       {/* Extracted Information Summary */}
-                      <Card className="bg-blue-50/50 border-blue-200">
+                      <Card className="bg-blue-50/50 border-blue-500/30">
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <FileText className="h-5 w-5" />
@@ -526,37 +524,37 @@ const Apply = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {(parsedData?.full_name || formData.full_name) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">Full Name</p>
+                              <p className="text-xs text-white/60 font-medium">Full Name</p>
                               <p className="text-sm font-semibold">{String(parsedData?.full_name || formData.full_name)}</p>
                             </div>
                           )}
                           {(parsedData?.email || formData.email) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">Email</p>
+                              <p className="text-xs text-white/60 font-medium">Email</p>
                               <p className="text-sm font-semibold">{String(parsedData?.email || formData.email)}</p>
                             </div>
                           )}
                           {(parsedData?.phone || formData.phone) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">Phone</p>
+                              <p className="text-xs text-white/60 font-medium">Phone</p>
                               <p className="text-sm font-semibold">{String(parsedData?.phone || formData.phone)}</p>
                             </div>
                           )}
                           {(parsedData?.location || formData.location) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">Location</p>
+                              <p className="text-xs text-white/60 font-medium">Location</p>
                               <p className="text-sm font-semibold">{String(parsedData?.location || formData.location)}</p>
                             </div>
                           )}
                           {(parsedData?.linkedin || formData.linkedin) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">LinkedIn</p>
+                              <p className="text-xs text-white/60 font-medium">LinkedIn</p>
                               <p className="text-sm break-all">{String(parsedData?.linkedin || formData.linkedin)}</p>
                             </div>
                           )}
                           {(parsedData?.github || formData.github) && (
                             <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">GitHub</p>
+                              <p className="text-xs text-white/60 font-medium">GitHub</p>
                               <p className="text-sm break-all">{String(parsedData?.github || formData.github)}</p>
                             </div>
                           )}
@@ -575,16 +573,16 @@ const Apply = () => {
                               }
                               if (Array.isArray(edu)) {
                                 return edu.map((e: any, idx: number) => (
-                                  <div key={idx} className="bg-white p-3 rounded-lg border">
+                                  <div key={idx} className="bg-white/10 p-3 rounded-lg border border-white/10">
                                     {typeof e === 'string' ? (
                                       <p className="text-sm">{e}</p>
                                     ) : (
                                       <>
                                         <p className="font-semibold text-sm">{e.degree}</p>
-                                        <p className="text-sm text-muted-foreground">{e.institution}</p>
-                                        {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
-                                        {e.duration && <p className="text-xs text-muted-foreground">{e.duration}</p>}
-                                        {e.details && <p className="text-xs text-muted-foreground mt-1">{e.details}</p>}
+                                        <p className="text-sm text-white/60">{e.institution}</p>
+                                        {e.location && <p className="text-xs text-white/60">{e.location}</p>}
+                                        {e.duration && <p className="text-xs text-white/60">{e.duration}</p>}
+                                        {e.details && <p className="text-xs text-white/60 mt-1">{e.details}</p>}
                                       </>
                                     )}
                                   </div>
@@ -605,10 +603,10 @@ const Apply = () => {
                               const exp = parsedData?.experience;
                               if (Array.isArray(exp)) {
                                 return exp.map((e: any, idx: number) => (
-                                  <div key={idx} className="bg-white p-3 rounded-lg border">
+                                  <div key={idx} className="bg-white/10 p-3 rounded-lg border border-white/10">
                                     <p className="font-semibold text-sm">{e.title || e.position}</p>
-                                    <p className="text-sm text-muted-foreground">{e.company}</p>
-                                    {e.duration && <p className="text-xs text-muted-foreground">{e.duration}</p>}
+                                    <p className="text-sm text-white/60">{e.company}</p>
+                                    {e.duration && <p className="text-xs text-white/60">{e.duration}</p>}
                                     {e.description && <p className="text-xs mt-2">{e.description}</p>}
                                   </div>
                                 ));
@@ -616,13 +614,13 @@ const Apply = () => {
                               // Fallback to current position if no experience array
                               if (parsedData?.current_position) {
                                 return (
-                                  <div className="bg-white p-3 rounded-lg border">
+                                  <div className="bg-white/10 p-3 rounded-lg border border-white/10">
                                     <p className="font-semibold text-sm">{parsedData.current_position}</p>
                                     {parsedData.current_company && (
-                                      <p className="text-sm text-muted-foreground">{parsedData.current_company}</p>
+                                      <p className="text-sm text-white/60">{parsedData.current_company}</p>
                                     )}
                                     {parsedData.total_experience && (
-                                      <p className="text-xs text-muted-foreground">{parsedData.total_experience}</p>
+                                      <p className="text-xs text-white/60">{parsedData.total_experience}</p>
                                     )}
                                   </div>
                                 );
@@ -639,18 +637,18 @@ const Apply = () => {
                           <h3 className="text-sm font-semibold text-primary">Projects</h3>
                           <div className="space-y-3">
                             {parsedData.projects.map((project: any, idx: number) => (
-                              <div key={idx} className="bg-white p-3 rounded-lg border">
+                              <div key={idx} className="bg-white/10 p-3 rounded-lg border border-white/10">
                                 <p className="font-semibold text-sm">{project.name}</p>
                                 {project.description && (
                                   <p className="text-xs mt-1">{project.description}</p>
                                 )}
                                 {project.technologies && (
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className="text-xs text-white/60 mt-1">
                                     <span className="font-medium">Technologies:</span> {project.technologies}
                                   </p>
                                 )}
                                 {project.duration && (
-                                  <p className="text-xs text-muted-foreground">{project.duration}</p>
+                                  <p className="text-xs text-white/60">{project.duration}</p>
                                 )}
                               </div>
                             ))}
@@ -752,11 +750,11 @@ const Apply = () => {
                 {/* CV Upload Section - Only show if no CV uploaded yet */}
                 {!parsedData && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <label className="text-sm font-medium text-white flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     Upload CV/Resume *
                   </label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
+                  <div className="border-2 border-dashed border-white/10 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
                     <input
                       type="file"
                       className="hidden"
@@ -771,8 +769,8 @@ const Apply = () => {
                         <><Loader2 className="h-8 w-8 mx-auto mb-2 text-primary animate-spin" />
                         <p className="text-sm font-medium text-primary">Parsing CV with AI...</p></>
                       ) : (
-                        <><Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
+                        <><Upload className="h-8 w-8 mx-auto mb-2 text-white/60" />
+                        <p className="text-sm text-white/60">
                           {fileName || "Click to upload (PDF, DOC, DOCX - Max 5MB)"}
                         </p>
                         {fileName && <p className="text-xs text-green-600 mt-1">✓ File uploaded</p>}</>
@@ -796,7 +794,7 @@ const Apply = () => {
                 {(showEditForm || (!showReviewPage && parsedData)) && (
                 <>
                 {/* Editable Information Summary - Same style as review */}
-                <Card className="bg-blue-50/50 border-blue-200 mb-6">
+                <Card className="bg-blue-50/50 border-blue-500/30 mb-6">
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Edit3 className="h-5 w-5" />
@@ -812,7 +810,7 @@ const Apply = () => {
                       <h3 className="text-sm font-semibold text-primary">Personal Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Full Name *</label>
+                          <label className="text-xs text-white/60 font-medium">Full Name *</label>
                           <input
                             type="text"
                             name="full_name"
@@ -823,7 +821,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Email *</label>
+                          <label className="text-xs text-white/60 font-medium">Email *</label>
                           <input
                             type="email"
                             name="email"
@@ -834,7 +832,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Phone *</label>
+                          <label className="text-xs text-white/60 font-medium">Phone *</label>
                           <input
                             type="tel"
                             name="phone"
@@ -845,7 +843,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Location</label>
+                          <label className="text-xs text-white/60 font-medium">Location</label>
                           <input
                             type="text"
                             name="location"
@@ -855,7 +853,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">LinkedIn</label>
+                          <label className="text-xs text-white/60 font-medium">LinkedIn</label>
                           <input
                             type="url"
                             name="linkedin"
@@ -866,7 +864,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">GitHub</label>
+                          <label className="text-xs text-white/60 font-medium">GitHub</label>
                           <input
                             type="url"
                             name="github"
@@ -897,7 +895,7 @@ const Apply = () => {
                       <h3 className="text-sm font-semibold text-primary">Work Experience</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Total Experience</label>
+                          <label className="text-xs text-white/60 font-medium">Total Experience</label>
                           <input
                             type="text"
                             name="total_experience"
@@ -908,7 +906,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Current Position</label>
+                          <label className="text-xs text-white/60 font-medium">Current Position</label>
                           <input
                             type="text"
                             name="current_position"
@@ -919,7 +917,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Current Company</label>
+                          <label className="text-xs text-white/60 font-medium">Current Company</label>
                           <input
                             type="text"
                             name="current_company"
@@ -961,7 +959,7 @@ const Apply = () => {
                     {/* Skills */}
                     <div className="space-y-3 pt-4 border-t">
                       <h3 className="text-sm font-semibold text-primary">Skills</h3>
-                      <p className="text-xs text-muted-foreground mb-2">
+                      <p className="text-xs text-white/60 mb-2">
                         Enter skills separated by commas
                       </p>
                       <Textarea
@@ -1007,7 +1005,7 @@ const Apply = () => {
                       <h3 className="text-sm font-semibold text-primary">Additional Information (Optional)</h3>
                       <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Portfolio/Website</label>
+                          <label className="text-xs text-white/60 font-medium">Portfolio/Website</label>
                           <input
                             type="url"
                             name="portfolio_url"
@@ -1018,7 +1016,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">Languages</label>
+                          <label className="text-xs text-white/60 font-medium">Languages</label>
                           <input
                             type="text"
                             name="languages"
@@ -1029,7 +1027,7 @@ const Apply = () => {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground font-medium">References</label>
+                          <label className="text-xs text-white/60 font-medium">References</label>
                           <Textarea
                             name="references"
                             value={formData.references}
@@ -1062,7 +1060,7 @@ const Apply = () => {
                   )}
                 </Button>
 
-                <p className="text-xs text-center text-muted-foreground">
+                <p className="text-xs text-center text-white/60">
                   By submitting, you confirm that the information above is accurate and complete.
                 </p>
               </>

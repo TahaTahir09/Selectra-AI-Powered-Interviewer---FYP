@@ -11,10 +11,10 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-orange-50 to-white">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="text-center space-y-6">
         <h1 className="text-8xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">404</h1>
-        <p className="text-2xl text-muted-foreground">Oops! Page not found</p>
+        <p className="text-2xl text-white/60">Oops! Page not found</p>
         <Button asChild size="lg" className="mt-4">
           <Link to="/">
             <Home className="mr-2 h-4 w-4" />
