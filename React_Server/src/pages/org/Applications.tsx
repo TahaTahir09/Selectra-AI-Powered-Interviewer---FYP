@@ -87,7 +87,8 @@ const Applications = () => {
 
   const getDisplaySimilarityScore = (rawScore: number | null | undefined) => {
     if (rawScore === null || rawScore === undefined) return null;
-    return Math.min(Math.max(rawScore * 10, 0), 100);
+    // Multiply by 5 and normalize to 0-100 range
+    return Math.min(Math.max(rawScore * 5, 0), 80);
   };
 
   const getTotalApplications = () => {

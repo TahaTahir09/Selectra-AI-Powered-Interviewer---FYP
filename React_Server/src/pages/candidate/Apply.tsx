@@ -817,7 +817,7 @@ const Apply = () => {
                             value={formData.full_name}
                             onChange={handleChange}
                             required
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -828,7 +828,7 @@ const Apply = () => {
                             value={formData.email}
                             onChange={handleChange}
                             required
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -839,7 +839,7 @@ const Apply = () => {
                             value={formData.phone}
                             onChange={handleChange}
                             required
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -849,7 +849,7 @@ const Apply = () => {
                             name="location"
                             value={formData.location}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -860,7 +860,7 @@ const Apply = () => {
                             value={formData.linkedin}
                             onChange={handleChange}
                             placeholder="https://linkedin.com/in/yourprofile"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -871,7 +871,7 @@ const Apply = () => {
                             value={formData.github}
                             onChange={handleChange}
                             placeholder="https://github.com/yourusername"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                       </div>
@@ -902,7 +902,7 @@ const Apply = () => {
                             value={formData.total_experience}
                             onChange={handleChange}
                             placeholder="e.g., 2 months, 3 years"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -913,7 +913,7 @@ const Apply = () => {
                             value={formData.current_position}
                             onChange={handleChange}
                             placeholder="e.g., Data Science Intern"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -924,7 +924,7 @@ const Apply = () => {
                             value={formData.current_company}
                             onChange={handleChange}
                             placeholder="e.g., 10Pearls"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                       </div>
@@ -1012,7 +1012,7 @@ const Apply = () => {
                             value={formData.portfolio_url}
                             onChange={handleChange}
                             placeholder="https://yourportfolio.com"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1023,7 +1023,7 @@ const Apply = () => {
                             value={formData.languages}
                             onChange={handleChange}
                             placeholder="e.g., English (Fluent), Urdu (Native)"
-                            className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-950 text-white border-white/30 focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
                         <div className="space-y-1">

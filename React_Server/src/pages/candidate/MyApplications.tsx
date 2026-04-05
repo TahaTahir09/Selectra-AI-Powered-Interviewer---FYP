@@ -278,16 +278,8 @@ const MyApplications = () => {
                         </div>
 
                         <div className="flex gap-2 flex-wrap">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleViewDetails(application)}
-                            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Application Details
-                          </Button>
-                          {application.cv_url && (
+                          {/* CANDIDATE SIDE: Hide View Details and Download CV */}
+                          {/* {application.cv_url && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -297,7 +289,7 @@ const MyApplications = () => {
                               <Download className="h-4 w-4 mr-2" />
                               Download CV
                             </Button>
-                          )}
+                          )} */}
                           {/* Interview Link Button - shown when interview link is available */}
                           {application.interview_link && (
                             <Button

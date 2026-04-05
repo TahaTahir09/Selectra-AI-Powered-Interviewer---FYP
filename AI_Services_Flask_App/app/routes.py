@@ -6,8 +6,7 @@ from .chromadb_utils import (
     get_application,
     search_similar_applications
 )
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from .cv_matcher import cv_matcher
 from datetime import datetime
 import PyPDF2
 import io
@@ -17,106 +16,24 @@ import re
 main = Blueprint('main', __name__)
 
 
-def normalize_text(text):
-  """Light normalization to reduce noise before vectorization."""
-  if not text:
-    return ""
-
-  cleaned = text.lower()
-  cleaned = re.sub(r"[^a-z0-9\s]", " ", cleaned)
-  cleaned = re.sub(r"\s+", " ", cleaned).strip()
-  return cleaned
-
-
-def calculate_keyword_match_score(job_description, cv_text):
-  """
-  Calculate keyword matching score - checks if CV contains key skills/terms from job description.
-  More permissive than TF-IDF alone.
-  """
-  job_clean = normalize_text(job_description)
-  cv_clean = normalize_text(cv_text)
-  
-  if not job_clean or not cv_clean:
-    return 0.0
-  
-  # Extract key technical terms (words > 3 characters that aren't common stop words)
-  common_stop_words = {
-    'the', 'and', 'with', 'from', 'that', 'this', 'have', 'your', 'will', 'work',
-    'are', 'for', 'not', 'can', 'but', 'one', 'all', 'our', 'out', 'who', 'been',
-    'their', 'more', 'such', 'than', 'them', 'then', 'when', 'what', 'which', 'why',
-    'how', 'where', 'use', 'used', 'or', 'as', 'be', 'by', 'to', 'in', 'of', 'is'
-  }
-  
-  job_words = set(w for w in job_clean.split() if len(w) > 3 and w not in common_stop_words)
-  cv_words = set(cv_clean.split())
-  
-  if not job_words:
-    return 0.0
-  
-  # Calculate percentage of job keywords found in CV
-  matched_keywords = job_words.intersection(cv_words)
-  keyword_match_ratio = len(matched_keywords) / len(job_words)
-  
-  return keyword_match_ratio
-
-
-def calculate_tfidf_similarity(job_description, cv_text):
-  """
-  Calculate TF-IDF cosine similarity between job description and CV.
-  """
-  job_clean = normalize_text(job_description)
-  cv_clean = normalize_text(cv_text)
-
-  if not job_clean or not cv_clean:
-    return 0.0
-
-  # Use TF-IDF with more permissive settings (no stop words, broader n-grams)
-  vectorizer = TfidfVectorizer(
-    stop_words=None,  # Don't remove stop words - they matter for domain content
-    ngram_range=(1, 3),  # Include 1, 2, and 3 grams for better context
-    min_df=1,
-    max_df=1.0,
-    lowercase=True
-  )
-  
-  try:
-    tfidf_matrix = vectorizer.fit_transform([job_clean, cv_clean])
-    score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-    return float(score)
-  except Exception as e:
-    print(f"Error in TF-IDF calculation: {e}")
-    return 0.0
-
-
 def calculate_similarity_score(job_description, cv_text):
-  """
-  Compute combined similarity score using multiple methods for better accuracy.
-  
-  Returns a score between 0.0 and 1.0
-  Combines:
-  - TF-IDF cosine similarity (60% weight)
-  - Keyword matching (40% weight)
-  """
-  if not job_description or not cv_text:
-    return 0.0
-  
-  try:
-    # Get individual scores
-    tfidf_score = calculate_tfidf_similarity(job_description, cv_text)
-    keyword_score = calculate_keyword_match_score(job_description, cv_text)
+    """
+    Wrapper function for similarity calculation using advanced CV matcher.
+    Returns score between 0.0 and 1.0
+    """
+    if not job_description or not cv_text:
+        return 0.0
     
-    # Combine scores: TF-IDF (60%) + Keyword Match (40%)
-    combined_score = (tfidf_score * 0.6) + (keyword_score * 0.4)
-    
-    # Cap at 1.0
-    combined_score = min(combined_score, 1.0)
-    
-    print(f"Similarity breakdown - TF-IDF: {tfidf_score:.4f}, Keywords: {keyword_score:.4f}, Combined: {combined_score:.4f}")
-    
-    return float(combined_score)
-  except Exception as e:
-    print(f"Error calculating combined similarity: {e}")
-    return 0.0
+    try:
+        match_result = cv_matcher.match_cv_to_jd(job_description, cv_text)
+        score = match_result['final_score'] / 100.0  # Convert 0-100 to 0-1
+        return float(score)
+    except Exception as e:
+        print(f"Error in calculate_similarity_score: {e}")
+        import traceback
+        traceback.print_exc()
+        return 0.0
+
 
 def extract_text_from_pdf_bytes(pdf_bytes):
     """Extract text from PDF bytes"""
@@ -195,7 +112,7 @@ def create_job():
 @main.route('/compare/<job_id>', methods=['POST'])
 def compare_cv(job_id):
     """
-    Compare a CV with a job description
+    Compare a CV with a job description using advanced hybrid matching
     ---
     tags:
       - Comparison
@@ -218,26 +135,32 @@ def compare_cv(job_id):
               example: "Experienced Python developer with 5 years in backend"
     responses:
       200:
-        description: Similarity score
+        description: Comprehensive matching analysis with score (0-100)
         schema:
           type: object
           properties:
             score:
               type: number
+            final_score:
+              type: number
+            decision:
+              type: string
+            semantic_similarity:
+              type: number
+            keyword_similarity:
+              type: number
+            skill_match_score:
+              type: number
+            matched_skills:
+              type: array
+            missing_skills:
+              type: array
+            reasoning:
+              type: string
       400:
         description: Invalid input
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
       404:
         description: Job not found
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
     """
     data = request.json
     cv = data.get('cv')
@@ -250,8 +173,25 @@ def compare_cv(job_id):
     if job_description is None:
         return jsonify({'error': 'Job not found'}), 404
     
-    score = calculate_similarity_score(job_description, cv)
-    return jsonify({'score': score}), 200
+    # Use advanced hybrid matcher
+    match_result = cv_matcher.match_cv_to_jd(job_description, cv)
+    
+    # Convert 0-100 score back to 0-1 for backward compatibility
+    score = match_result['final_score'] / 100.0
+    
+    # Log detailed results
+    print(f"\n=== CV Matching Results ===")
+    print(f"Job ID: {job_id}")
+    print(f"Final Score: {match_result['final_score']}%")
+    print(f"Decision: {match_result['decision']}")
+    print(f"Matched Skills: {len(match_result['matched_skills'])}")
+    print(f"Missing Skills: {len(match_result['missing_skills'])}")
+    
+    # Return both 0-1 score and full analysis
+    return jsonify({
+        'score': score,  # 0-1 for backward compatibility
+        **match_result   # Include full analysis
+    }), 200
 
 
 @main.route('/parsed-cv', methods=['POST'])
@@ -496,11 +436,18 @@ def submit_application():
         # Calculate similarity score if job exists
         if job_description:
             try:
-                print("Calculating similarity score...")
-                similarity_score = calculate_similarity_score(job_description, cv_text)
-                print(f"✓ Similarity score: {similarity_score:.4f} ({similarity_score*100:.2f}%)")
+                print("Calculating advanced CV-to-JD similarity...")
+                match_results = cv_matcher.match_cv_to_jd(job_description, cv_text)
+                similarity_score = match_results['final_score'] / 100.0  # Convert to 0-1
+                
+                print(f"✓ Similarity score: {similarity_score:.4f} ({match_results['final_score']:.2f}%)")
+                print(f"  Decision: {match_results['decision']}")
+                print(f"  Matched Skills: {len(match_results['matched_skills'])}")
+                print(f"  Missing Skills: {len(match_results['missing_skills'])}")
             except Exception as e:
                 print(f"⚠ Error calculating similarity: {e}")
+                import traceback
+                traceback.print_exc()
         
         return jsonify({
             'application_id': saved_app_id,

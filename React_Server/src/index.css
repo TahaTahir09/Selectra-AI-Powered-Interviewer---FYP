@@ -2,40 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Autofill input styling fix */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active,
-input:-webkit-autofill:valid {
-  -webkit-box-shadow: 0 0 0 1000px hsl(222 47% 8%) inset !important;
-  box-shadow: 0 0 0 1000px hsl(222 47% 8%) inset !important;
-}
+/* ===== AGGRESSIVE AUTOFILL FIXES ===== */
 
+/* Force dark background on autofill to override browser white */
 input:-webkit-autofill {
-  -webkit-text-fill-color: hsl(0 0% 100%) !important;
-  color: hsl(0 0% 100%) !important;
-  caret-color: hsl(0 0% 100%) !important;
+  -webkit-box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-caret-color: #ffffff !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
 }
 
-input:-webkit-autofill::placeholder {
-  -webkit-text-fill-color: hsl(0 0% 100% / 0.6) !important;
-  color: hsl(0 0% 100% / 0.6) !important;
+input:-webkit-autofill:hover {
+  -webkit-box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Direct input type targeting for autofill */
+input[type="text"]:-webkit-autofill,
+input[type="email"]:-webkit-autofill,
+input[type="password"]:-webkit-autofill,
+input[type="tel"]:-webkit-autofill,
+input[type="url"]:-webkit-autofill,
+input[type="number"]:-webkit-autofill {
+  -webkit-box-shadow: inset 0 0 0 1000px #1a1a3e !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background-color: #1a1a3e !important;
+  color: #ffffff !important;
+}
+
+/* Textarea autofill */
 textarea:-webkit-autofill,
 textarea:-webkit-autofill:hover,
-textarea:-webkit-autofill:focus,
-textarea:-webkit-autofill:active,
-textarea:-webkit-autofill:valid {
-  -webkit-box-shadow: 0 0 0 1000px hsl(222 47% 8%) inset !important;
-  box-shadow: 0 0 0 1000px hsl(222 47% 8%) inset !important;
+textarea:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  box-shadow: 0 0 0 1000px #1a1a3e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
 }
 
+/* Ensure all autofilled inputs have dark background */
+input:-webkit-autofill,
 textarea:-webkit-autofill {
-  -webkit-text-fill-color: hsl(0 0% 100%) !important;
-  color: hsl(0 0% 100%) !important;
+  font-size: 16px;
+  font-family: inherit;
 }
+
+/* Definition of the design system - Dark Gradient Theme (slate-900 via purple-900)
+All colors MUST be HSL.
+*/
 
 /* Definition of the design system - Dark Gradient Theme (slate-900 via purple-900)
 All colors MUST be HSL.
