@@ -5,6 +5,7 @@ Converts interview questions to speech audio
 import os
 import base64
 from typing import Optional, Dict, Any
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -19,21 +20,7 @@ class TTSService:
         self.voice_id = os.getenv('ELEVENLABS_VOICE_ID', 'JBFqnCBsd6RMkjVDRZzb')  # George voice
         self.model_id = os.getenv('ELEVENLABS_MODEL_ID', 'eleven_multilingual_v2')
         self.output_format = 'mp3_44100_128'
-        self._client = None
-    
-    @property
-    def client(self):
-        """Lazy initialization of ElevenLabs client"""
-        if self._client is None and self.api_key:
-            try:
-                from elevenlabs.client import ElevenLabs
-                self._client = ElevenLabs(api_key=self.api_key)
-                print("✓ ElevenLabs client initialized")
-            except ImportError:
-                print("⚠ ElevenLabs package not installed")
-            except Exception as e:
-                print(f"⚠ Failed to initialize ElevenLabs client: {e}")
-        return self._client
+        self.timeout = 45
     
     def text_to_speech(self, text: str) -> Optional[Dict[str, Any]]:
         """
@@ -47,35 +34,42 @@ class TTSService:
             None on failure
         """
         if not self.api_key:
-            print("⚠ ELEVENLABS_API_KEY not set - TTS disabled")
+            print("WARN: ELEVENLABS_API_KEY not set - TTS disabled")
             return None
         
         if not text or not text.strip():
-            print("⚠ Empty text provided for TTS")
+            print("WARN: Empty text provided for TTS")
             return None
         
         try:
-            client = self.client
-            if not client:
+            print(f"Converting text to speech ({len(text)} chars)...")
+
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice_id}"
+            headers = {
+                'xi-api-key': self.api_key,
+                'Content-Type': 'application/json',
+                'Accept': 'audio/mpeg',
+            }
+            payload = {
+                'text': text,
+                'model_id': self.model_id,
+                'output_format': self.output_format,
+            }
+
+            response = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
+            if response.status_code >= 400:
+                print(f"ERROR: TTS API error {response.status_code}: {response.text}")
                 return None
-            
-            print(f"🔊 Converting text to speech ({len(text)} chars)...")
-            
-            # Generate audio using ElevenLabs
-            audio_generator = client.text_to_speech.convert(
-                text=text,
-                voice_id=self.voice_id,
-                model_id=self.model_id,
-                output_format=self.output_format,
-            )
-            
-            # Collect audio bytes from generator
-            audio_bytes = b''.join(chunk for chunk in audio_generator)
+
+            audio_bytes = response.content
+            if not audio_bytes:
+                print("ERROR: TTS API returned empty audio")
+                return None
             
             # Encode to base64
             audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
             
-            print(f"✓ TTS conversion successful ({len(audio_bytes)} bytes)")
+            print(f" TTS conversion successful ({len(audio_bytes)} bytes)")
             
             return {
                 'audio_base64': audio_base64,
@@ -85,12 +79,12 @@ class TTSService:
             }
             
         except Exception as e:
-            print(f"✗ TTS conversion failed: {e}")
+            print(f"ERROR: TTS conversion failed: {e}")
             return None
     
     def is_available(self) -> bool:
         """Check if TTS service is available"""
-        return bool(self.api_key and self.client)
+        return bool(self.api_key)
 
 
 # Global TTS service instance

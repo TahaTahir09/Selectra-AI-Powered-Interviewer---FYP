@@ -7,28 +7,116 @@ from .chromadb_utils import (
     search_similar_applications
 )
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from datetime import datetime
-import numpy as np
 import PyPDF2
 import io
 import base64
+import re
 
 main = Blueprint('main', __name__)
 
-_vectorizer = TfidfVectorizer()
 
-def vectorize_text(text):
-    # Fit or transform depending on whether vocabulary exists
-    if not hasattr(_vectorizer, 'vocabulary_') or not _vectorizer.vocabulary_:
-        return _vectorizer.fit_transform([text]).toarray()[0]
-    else:
-        return _vectorizer.transform([text]).toarray()[0]
+def normalize_text(text):
+  """Light normalization to reduce noise before vectorization."""
+  if not text:
+    return ""
 
-def compare_vectors(vec1, vec2):
-    # Cosine similarity
-    if np.linalg.norm(vec1) == 0 or np.linalg.norm(vec2) == 0:
-        return 0.0
-    return float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+  cleaned = text.lower()
+  cleaned = re.sub(r"[^a-z0-9\s]", " ", cleaned)
+  cleaned = re.sub(r"\s+", " ", cleaned).strip()
+  return cleaned
+
+
+def calculate_keyword_match_score(job_description, cv_text):
+  """
+  Calculate keyword matching score - checks if CV contains key skills/terms from job description.
+  More permissive than TF-IDF alone.
+  """
+  job_clean = normalize_text(job_description)
+  cv_clean = normalize_text(cv_text)
+  
+  if not job_clean or not cv_clean:
+    return 0.0
+  
+  # Extract key technical terms (words > 3 characters that aren't common stop words)
+  common_stop_words = {
+    'the', 'and', 'with', 'from', 'that', 'this', 'have', 'your', 'will', 'work',
+    'are', 'for', 'not', 'can', 'but', 'one', 'all', 'our', 'out', 'who', 'been',
+    'their', 'more', 'such', 'than', 'them', 'then', 'when', 'what', 'which', 'why',
+    'how', 'where', 'use', 'used', 'or', 'as', 'be', 'by', 'to', 'in', 'of', 'is'
+  }
+  
+  job_words = set(w for w in job_clean.split() if len(w) > 3 and w not in common_stop_words)
+  cv_words = set(cv_clean.split())
+  
+  if not job_words:
+    return 0.0
+  
+  # Calculate percentage of job keywords found in CV
+  matched_keywords = job_words.intersection(cv_words)
+  keyword_match_ratio = len(matched_keywords) / len(job_words)
+  
+  return keyword_match_ratio
+
+
+def calculate_tfidf_similarity(job_description, cv_text):
+  """
+  Calculate TF-IDF cosine similarity between job description and CV.
+  """
+  job_clean = normalize_text(job_description)
+  cv_clean = normalize_text(cv_text)
+
+  if not job_clean or not cv_clean:
+    return 0.0
+
+  # Use TF-IDF with more permissive settings (no stop words, broader n-grams)
+  vectorizer = TfidfVectorizer(
+    stop_words=None,  # Don't remove stop words - they matter for domain content
+    ngram_range=(1, 3),  # Include 1, 2, and 3 grams for better context
+    min_df=1,
+    max_df=1.0,
+    lowercase=True
+  )
+  
+  try:
+    tfidf_matrix = vectorizer.fit_transform([job_clean, cv_clean])
+    score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+    return float(score)
+  except Exception as e:
+    print(f"Error in TF-IDF calculation: {e}")
+    return 0.0
+
+
+def calculate_similarity_score(job_description, cv_text):
+  """
+  Compute combined similarity score using multiple methods for better accuracy.
+  
+  Returns a score between 0.0 and 1.0
+  Combines:
+  - TF-IDF cosine similarity (60% weight)
+  - Keyword matching (40% weight)
+  """
+  if not job_description or not cv_text:
+    return 0.0
+  
+  try:
+    # Get individual scores
+    tfidf_score = calculate_tfidf_similarity(job_description, cv_text)
+    keyword_score = calculate_keyword_match_score(job_description, cv_text)
+    
+    # Combine scores: TF-IDF (60%) + Keyword Match (40%)
+    combined_score = (tfidf_score * 0.6) + (keyword_score * 0.4)
+    
+    # Cap at 1.0
+    combined_score = min(combined_score, 1.0)
+    
+    print(f"Similarity breakdown - TF-IDF: {tfidf_score:.4f}, Keywords: {keyword_score:.4f}, Combined: {combined_score:.4f}")
+    
+    return float(combined_score)
+  except Exception as e:
+    print(f"Error calculating combined similarity: {e}")
+    return 0.0
 
 def extract_text_from_pdf_bytes(pdf_bytes):
     """Extract text from PDF bytes"""
@@ -162,10 +250,7 @@ def compare_cv(job_id):
     if job_description is None:
         return jsonify({'error': 'Job not found'}), 404
     
-    job_vector = vectorize_text(job_description)
-    cv_vector = vectorize_text(cv)
-    
-    score = compare_vectors(job_vector, cv_vector)
+    score = calculate_similarity_score(job_description, cv)
     return jsonify({'score': score}), 200
 
 
@@ -284,9 +369,7 @@ def store_parsed_cv():
     # Calculate similarity score automatically
     try:
         print("Calculating similarity score...")
-        job_vector = vectorize_text(job_description)
-        cv_vector = vectorize_text(cv_text)
-        similarity_score = compare_vectors(job_vector, cv_vector)
+        similarity_score = calculate_similarity_score(job_description, cv_text)
         print(f"✓ Similarity score: {similarity_score:.4f} ({similarity_score*100:.2f}%)")
     except Exception as e:
         print(f"⚠ Error calculating similarity: {e}")
@@ -414,9 +497,7 @@ def submit_application():
         if job_description:
             try:
                 print("Calculating similarity score...")
-                job_vector = vectorize_text(job_description)
-                cv_vector = vectorize_text(cv_text)
-                similarity_score = compare_vectors(job_vector, cv_vector)
+                similarity_score = calculate_similarity_score(job_description, cv_text)
                 print(f"✓ Similarity score: {similarity_score:.4f} ({similarity_score*100:.2f}%)")
             except Exception as e:
                 print(f"⚠ Error calculating similarity: {e}")
@@ -496,6 +577,7 @@ def search_applications():
 
 from .interview_service import interview_service
 from .tts_service import tts_service
+from .stt_service import stt_service
 
 @main.route('/interview/start', methods=['POST'])
 def start_interview():
@@ -859,4 +941,58 @@ def tts_status():
         'available': tts_service.is_available(),
         'voice_id': tts_service.voice_id,
         'model_id': tts_service.model_id
+    }), 200
+
+
+@main.route('/stt/transcribe', methods=['POST'])
+def speech_to_text():
+    """
+    Transcribe candidate audio to text using ElevenLabs STT API
+    ---
+    tags:
+      - Speech-to-Text
+    consumes:
+      - multipart/form-data
+    parameters:
+      - in: formData
+        name: audio
+        type: file
+        required: true
+        description: Audio blob recorded from candidate microphone
+    responses:
+      200:
+        description: Audio transcribed successfully
+      400:
+        description: Invalid input or STT unavailable
+      500:
+        description: STT processing failed
+    """
+    if not stt_service.is_available():
+        return jsonify({'error': 'STT service is not available. Check ELEVENLABS_STT_API_KEY or ELEVENLABS_API_KEY.'}), 400
+
+    audio_file = request.files.get('audio')
+    if not audio_file:
+        return jsonify({'error': 'Audio file is required (form field: audio)'}), 400
+
+    try:
+        audio_bytes = audio_file.read()
+        if not audio_bytes:
+            return jsonify({'error': 'Audio file is empty'}), 400
+
+        result = stt_service.transcribe_audio(audio_bytes, filename=audio_file.filename or 'candidate-answer.webm')
+        if result is None:
+            return jsonify({'success': False, 'error': 'STT transcription failed'}), 500
+
+        return jsonify({'success': True, **result}), 200
+    except Exception as exc:
+        return jsonify({'success': False, 'error': f'Failed to transcribe audio: {str(exc)}'}), 500
+
+
+@main.route('/stt/status', methods=['GET'])
+def stt_status():
+    """Check STT service status."""
+    return jsonify({
+        'available': stt_service.is_available(),
+        'model_id': stt_service.model_id,
+        'language_code': stt_service.language_code,
     }), 200

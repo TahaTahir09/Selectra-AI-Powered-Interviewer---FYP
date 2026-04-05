@@ -4,7 +4,7 @@ import {
   Play, Loader2, Clock, Send, CheckCircle, 
   AlertCircle, Volume2, VolumeX,
   Briefcase, FileText, ArrowRight, Mic, MessageSquare,
-  Award, Target, ChevronRight, Sparkles, Bot
+  Award, Target, ChevronRight, Sparkles, Bot, StopCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,6 +57,7 @@ const Interview = () => {
   // Interview state
   const [stage, setStage] = useState<InterviewStage>('loading');
   const [currentQuestion, setCurrentQuestion] = useState('');
+  const [streamedQuestion, setStreamedQuestion] = useState('');
   const [questionNumber, setQuestionNumber] = useState(0);
   const [answer, setAnswer] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]); // Hidden from UI
@@ -76,12 +77,209 @@ const Interview = () => {
   
   // Audio playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const questionStreamTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [completionMessage, setCompletionMessage] = useState('');
+
+  const clearQuestionStreamTimer = useCallback(() => {
+    if (questionStreamTimerRef.current) {
+      clearInterval(questionStreamTimerRef.current);
+      questionStreamTimerRef.current = null;
+    }
+  }, []);
+
+  const streamQuestionText = useCallback((fullQuestion: string) => {
+    clearQuestionStreamTimer();
+
+    if (!fullQuestion) {
+      setStreamedQuestion('');
+      return;
+    }
+
+    setStreamedQuestion('');
+    let index = 0;
+    questionStreamTimerRef.current = setInterval(() => {
+      index += 1;
+      setStreamedQuestion(fullQuestion.slice(0, index));
+
+      if (index >= fullQuestion.length) {
+        clearQuestionStreamTimer();
+      }
+    }, 28);
+  }, [clearQuestionStreamTimer]);
+
+  // Voice answer + STT
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [recordingError, setRecordingError] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const transcriptionChainRef = useRef<Promise<void>>(Promise.resolve());
+  const handleSubmitAnswerRef = useRef<(providedAnswer?: string) => Promise<void>>(async () => {});
+
+  const appendTranscript = useCallback((existingText: string, incomingText: string) => {
+    const existing = existingText.trim();
+    const incoming = incomingText.trim();
+
+    if (!incoming) return existingText;
+    if (!existing) return incoming;
+
+    if (existing.endsWith(incoming)) {
+      return existing;
+    }
+    if (incoming.startsWith(existing)) {
+      return incoming;
+    }
+
+    return `${existing} ${incoming}`.replace(/\s+/g, ' ').trim();
+  }, []);
+
+  const queueChunkTranscription = useCallback((audioChunk: Blob) => {
+    transcriptionChainRef.current = transcriptionChainRef.current
+      .then(async () => {
+        if (!audioChunk.size) return;
+
+        try {
+          setIsTranscribing(true);
+          const result = await flaskAPI.transcribeSpeech(audioChunk);
+          if (result?.success && result?.text) {
+            setLiveTranscript(prev => appendTranscript(prev, result.text));
+          }
+        } catch (error) {
+          console.error('Chunk transcription failed:', error);
+        } finally {
+          setIsTranscribing(false);
+        }
+      })
+      .catch(() => {
+        // Keep queue alive if one chunk fails.
+      });
+  }, [appendTranscript]);
+
+  const cleanupMicrophoneResources = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+  }, []);
+
+  const startVoiceRecording = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setRecordingError('Microphone is not supported in this browser.');
+        return;
+      }
+      if (typeof MediaRecorder === 'undefined') {
+        setRecordingError('Audio recording is not supported in this browser.');
+        return;
+      }
+
+      setRecordingError('');
+      setLiveTranscript('');
+      setAnswer('');
+      recordedChunksRef.current = [];
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const preferredMimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+      const selectedMimeType = preferredMimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+          queueChunkTranscription(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        cleanupMicrophoneResources();
+      };
+
+      recorder.onerror = () => {
+        setRecordingError('Recording failed. Please try again.');
+      };
+
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      recorder.start(3000);
+    } catch (error) {
+      console.error('Microphone setup failed:', error);
+      cleanupMicrophoneResources();
+      setRecordingError('Unable to access microphone. Please allow microphone permission.');
+      setIsRecording(false);
+    }
+  }, [cleanupMicrophoneResources, queueChunkTranscription]);
+
+  const stopRecorder = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === 'inactive') {
+      cleanupMicrophoneResources();
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const onStop = () => {
+        recorder.removeEventListener('stop', onStop);
+        resolve();
+      };
+      recorder.addEventListener('stop', onStop);
+      recorder.stop();
+    });
+  }, [cleanupMicrophoneResources]);
+
+  const stopVoiceAndSave = useCallback(async (submitAfterStop: boolean) => {
+    if (!isRecording) return;
+
+    setIsRecording(false);
+    await stopRecorder();
+    await transcriptionChainRef.current;
+
+    const recordedBlob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+    let finalTranscript = liveTranscript.trim();
+
+    if (recordedBlob.size > 0) {
+      try {
+        setIsTranscribing(true);
+        const fullResult = await flaskAPI.transcribeSpeech(recordedBlob);
+        if (fullResult?.success && fullResult?.text?.trim()) {
+          finalTranscript = fullResult.text.trim();
+        }
+      } catch (error) {
+        console.error('Final transcription failed:', error);
+      } finally {
+        setIsTranscribing(false);
+      }
+    }
+
+    setLiveTranscript(finalTranscript);
+    setAnswer(finalTranscript);
+
+    if (!submitAfterStop) {
+      toast({
+        title: "Transcript ready",
+        description: "You can edit your transcribed answer before submitting.",
+      });
+    }
+
+    if (submitAfterStop) {
+      await handleSubmitAnswerRef.current(finalTranscript);
+    }
+  }, [isRecording, liveTranscript, stopRecorder, toast]);
 
   // Play audio from base64 encoded MP3
   const playAudioFromBase64 = useCallback((audioBase64: string) => {
-    if (!audioEnabled) return;
+    if (!audioEnabled) {
+      setIsPlayingAudio(false);
+      return;
+    }
     
     try {
       if (audioRef.current) {
@@ -103,6 +301,15 @@ const Interview = () => {
     }
   }, [audioEnabled]);
 
+  const presentQuestionWithVoice = useCallback((questionText: string, audioBase64?: string) => {
+    setCurrentQuestion(questionText);
+    streamQuestionText(questionText);
+
+    if (audioBase64) {
+      playAudioFromBase64(audioBase64);
+    }
+  }, [playAudioFromBase64, streamQuestionText]);
+
   // Fetch application data
   useEffect(() => {
     const fetchApplicationData = async () => {
@@ -115,6 +322,12 @@ const Interview = () => {
         );
         
         if (!matchingApp) {
+          setStage('error');
+          return;
+        }
+
+        if (matchingApp.interview_completed_at || matchingApp.interview_results) {
+          setCompletionMessage('This interview is already completed. Re-attempt is not allowed.');
           setStage('error');
           return;
         }
@@ -194,7 +407,11 @@ const Interview = () => {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            handleSubmitAnswer();
+            if (isRecording) {
+              stopVoiceAndSave(false);
+            } else {
+              handleSubmitAnswer();
+            }
             return 0;
           }
           return prev - 1;
@@ -207,7 +424,17 @@ const Interview = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [stage, timeLeft]);
+  }, [stage, timeLeft, isRecording, stopVoiceAndSave]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      clearQuestionStreamTimer();
+      cleanupMicrophoneResources();
+    };
+  }, [cleanupMicrophoneResources, clearQuestionStreamTimer]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -224,7 +451,7 @@ const Interview = () => {
       const result = await flaskAPI.startInterview(jobDescription, resumeSummary);
       
       if (result.success && result.question) {
-        setCurrentQuestion(result.question);
+        presentQuestionWithVoice(result.question, result.audio?.audio_base64);
         setQuestionNumber(1);
         
         // Store in conversation history (hidden from UI)
@@ -234,10 +461,8 @@ const Interview = () => {
           timestamp: new Date()
         }]);
         
-        if (result.audio?.audio_base64) {
-          playAudioFromBase64(result.audio.audio_base64);
-        }
-        
+        setLiveTranscript('');
+        setRecordingError('');
         setTimeLeft(ANSWER_TIME_LIMIT);
         setStage('answering');
         setTimeout(() => answerRef.current?.focus(), 100);
@@ -258,14 +483,14 @@ const Interview = () => {
   };
 
   // Submit answer
-  const handleSubmitAnswer = useCallback(async () => {
+  const handleSubmitAnswer = useCallback(async (providedAnswer?: string) => {
     if (isSubmitting) return;
     
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
     
-    const currentAnswer = answer.trim() || "(No answer provided)";
+    const currentAnswer = (providedAnswer ?? answer).trim() || "(No answer provided)";
     setIsSubmitting(true);
     
     // Add to conversation history (hidden)
@@ -276,6 +501,8 @@ const Interview = () => {
     }]);
     
     setAnswer('');
+    setLiveTranscript('');
+    recordedChunksRef.current = [];
     setStage('submitted');
     
     try {
@@ -311,6 +538,10 @@ const Interview = () => {
     }
   }, [answer, questionNumber, currentQuestion, jobDescription, resumeSummary, isSubmitting]);
 
+  useEffect(() => {
+    handleSubmitAnswerRef.current = handleSubmitAnswer;
+  }, [handleSubmitAnswer]);
+
   // Get next question
   const handleNextQuestion = async () => {
     if (questionNumber >= TOTAL_QUESTIONS) {
@@ -333,7 +564,7 @@ const Interview = () => {
       );
       
       if (nextQ.success && nextQ.question) {
-        setCurrentQuestion(nextQ.question);
+        presentQuestionWithVoice(nextQ.question, nextQ.audio?.audio_base64);
         setQuestionNumber(prev => prev + 1);
         
         // Add to conversation history (hidden)
@@ -343,10 +574,8 @@ const Interview = () => {
           timestamp: new Date()
         }]);
         
-        if (nextQ.audio?.audio_base64) {
-          playAudioFromBase64(nextQ.audio.audio_base64);
-        }
-        
+        setLiveTranscript('');
+        setRecordingError('');
         setTimeLeft(ANSWER_TIME_LIMIT);
         setStage('answering');
         setTimeout(() => answerRef.current?.focus(), 100);
@@ -395,6 +624,17 @@ const Interview = () => {
         });
       } catch (saveError) {
         console.error('Failed to save interview results:', saveError);
+
+        const statusCode = (saveError as any)?.response?.status;
+        if (statusCode === 409) {
+          toast({
+            title: 'Interview already submitted',
+            description: 'This interview was already completed earlier and cannot be re-attempted.',
+            variant: 'destructive',
+          });
+          setStage('error');
+          return;
+        }
       }
       
       localStorage.setItem(`interview_result_${id}`, JSON.stringify({
@@ -452,7 +692,7 @@ const Interview = () => {
           </div>
           <h2 className="text-2xl font-bold text-white mb-3">Interview Not Available</h2>
           <p className="text-white/60 mb-8">
-            This interview link is invalid or has expired. Please contact your recruiter.
+            {completionMessage || 'This interview link is invalid or has expired. Please contact your recruiter.'}
           </p>
           <Button 
             onClick={() => navigate('/')}
@@ -715,22 +955,70 @@ const Interview = () => {
                   </div>
                   <div className="flex-1">
                     <p className="text-white/50 text-sm uppercase tracking-wider mb-2">Question {questionNumber}</p>
-                    <p className="text-white text-xl leading-relaxed">{currentQuestion}</p>
+                    <p className="text-white text-xl leading-relaxed">{streamedQuestion || currentQuestion}</p>
                   </div>
                 </div>
+                {isPlayingAudio && (
+                  <p className="text-xs text-purple-300/90 mt-2">Reading question aloud...</p>
+                )}
               </Card>
 
               {/* Answer Input */}
               <Card className="bg-white/5 backdrop-blur-xl border-white/10 p-6">
                 <p className="text-white/50 text-sm uppercase tracking-wider mb-3">Your Answer</p>
+
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                  {!isRecording ? (
+                    <Button
+                      type="button"
+                      onClick={startVoiceRecording}
+                      disabled={isSubmitting || isTranscribing}
+                      className="bg-emerald-600 hover:bg-emerald-500 rounded-xl"
+                    >
+                      <Mic className="h-4 w-4 mr-2" />
+                      Start Voice Answer
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => stopVoiceAndSave(false)}
+                      disabled={isSubmitting || isTranscribing}
+                      className="bg-rose-600 hover:bg-rose-500 rounded-xl"
+                    >
+                      <StopCircle className="h-4 w-4 mr-2" />
+                      Stop and Review Transcript
+                    </Button>
+                  )}
+
+                  {(isRecording || isTranscribing) && (
+                    <span className="text-sm text-white/70 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {isRecording ? 'Listening and transcribing...' : 'Finalizing transcript...'}
+                    </span>
+                  )}
+                </div>
+
+                {recordingError && (
+                  <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {recordingError}
+                  </div>
+                )}
+
+                <div className="mb-4 rounded-xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Live Transcript</p>
+                  <p className="text-white/90 min-h-[48px]">
+                    {liveTranscript || (isRecording ? 'Transcription will appear here as you speak...' : 'No transcript yet.')}
+                  </p>
+                </div>
+
                 <Textarea
                   ref={answerRef}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your answer here..."
+                  placeholder="You can type, or record your answer and edit transcript here..."
                   className="min-h-[150px] resize-none bg-white/5 border-white/10 text-white placeholder:text-white/30 text-lg focus:border-purple-500/50 focus:ring-purple-500/20 rounded-xl mb-4"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isRecording}
                   autoFocus
                 />
                 <div className="flex items-center justify-between">
@@ -742,7 +1030,7 @@ const Interview = () => {
                     <span className="text-white/40 text-sm">{answer.length} chars</span>
                     <Button
                       onClick={handleSubmitAnswer}
-                      disabled={isSubmitting || !answer.trim()}
+                      disabled={isSubmitting || isRecording || !answer.trim()}
                       size="lg"
                       className="px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 rounded-xl disabled:opacity-50"
                     >

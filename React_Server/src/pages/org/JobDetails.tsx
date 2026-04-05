@@ -99,6 +99,11 @@ const JobDetails = () => {
     }
   };
 
+  const getDisplaySimilarityScore = (rawScore: number | null | undefined) => {
+    if (rawScore === null || rawScore === undefined) return null;
+    return Math.min(Math.max(rawScore * 10, 0), 100);
+  };
+
   const handleRecalculateSimilarity = async (applicationId: number) => {
     try {
       setRecalculating(true);
@@ -124,7 +129,7 @@ const JobDetails = () => {
       
       toast({
         title: "Score Updated",
-        description: `Similarity score: ${result.similarity_score}%`,
+        description: `Similarity score: ${Math.round(getDisplaySimilarityScore(result.similarity_score) || 0)}%`,
       });
     } catch (error: any) {
       console.error('Error recalculating similarity:', error);
@@ -193,10 +198,10 @@ const JobDetails = () => {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 8) return 'text-green-600 bg-green-100';
-    if (score >= 6) return 'text-yellow-600 bg-yellow-100';
-    if (score >= 4) return 'text-purple-400 bg-orange-100';
-    return 'text-red-600 bg-red-100';
+    if (score >= 8) return 'text-green-300 bg-green-500/20 border border-green-400/30';
+    if (score >= 6) return 'text-yellow-300 bg-yellow-500/20 border border-yellow-400/30';
+    if (score >= 4) return 'text-orange-300 bg-orange-500/20 border border-orange-400/30';
+    return 'text-red-300 bg-red-500/20 border border-red-400/30';
   };
 
   if (loading) {
@@ -295,7 +300,7 @@ const JobDetails = () => {
                   </div>
                   <p className="text-2xl font-bold text-green-600 capitalize">{job.status}</p>
                 </div>
-                <div className="bg-orange-50 p-4 rounded-lg">
+                <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <Calendar className="h-5 w-5 text-purple-400" />
                     <span className="text-sm text-white/60">Days Active</span>
@@ -409,12 +414,12 @@ const JobDetails = () => {
                               Applied {new Date(app.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          {app.similarity_score !== null && app.similarity_score !== undefined && (
+                          {getDisplaySimilarityScore(app.similarity_score) !== null && (
                             <div className="ml-4">
                               <div className="flex items-center gap-2">
                                 <div className="text-right">
                                   <div className="text-2xl font-bold text-blue-600">
-                                    {Math.round(app.similarity_score)}%
+                                    {Math.round(getDisplaySimilarityScore(app.similarity_score) || 0)}%
                                   </div>
                                   <div className="text-xs text-white/60">
                                     Match Score
@@ -435,13 +440,13 @@ const JobDetails = () => {
                                       className="circle"
                                       fill="none"
                                       stroke={
-                                        app.similarity_score >= 75 ? "#22c55e" :
-                                        app.similarity_score >= 50 ? "#f59e0b" :
+                                        (getDisplaySimilarityScore(app.similarity_score) || 0) >= 75 ? "#22c55e" :
+                                        (getDisplaySimilarityScore(app.similarity_score) || 0) >= 50 ? "#f59e0b" :
                                         "#ef4444"
                                       }
                                       strokeWidth="3"
                                       strokeLinecap="round"
-                                      strokeDasharray={`${app.similarity_score}, 100`}
+                                      strokeDasharray={`${getDisplaySimilarityScore(app.similarity_score) || 0}, 100`}
                                       d="M18 2.0845
                                         a 15.9155 15.9155 0 0 1 0 31.831
                                         a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -499,7 +504,7 @@ const JobDetails = () => {
           {selectedApplication && (
             <div className="space-y-6 py-4">
               {/* Candidate Info & Match Score */}
-              <div className="flex items-start justify-between p-6 bg-gradient-to-r from-blue-50 to-white rounded-lg border-2 border-blue-500/30">
+              <div className="flex items-start justify-between p-6 bg-gradient-to-r from-slate-800/90 to-slate-700/60 rounded-lg border-2 border-blue-500/30">
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-white mb-2">
                     {selectedApplication.candidate_name}
@@ -525,7 +530,7 @@ const JobDetails = () => {
                 </div>
                 
                 {/* Match Score Display */}
-                {selectedApplication.similarity_score !== null && selectedApplication.similarity_score !== undefined ? (
+                {getDisplaySimilarityScore(selectedApplication.similarity_score) !== null ? (
                   <div className="flex flex-col items-center justify-center p-6 bg-white/10 backdrop-blur-xl rounded-lg border-2 border-white/20">
                     <div className="relative w-32 h-32 mb-2">
                       <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
@@ -542,13 +547,13 @@ const JobDetails = () => {
                           className="circle"
                           fill="none"
                           stroke={
-                            selectedApplication.similarity_score >= 75 ? "#22c55e" :
-                            selectedApplication.similarity_score >= 50 ? "#f59e0b" :
+                            (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 75 ? "#22c55e" :
+                            (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 50 ? "#f59e0b" :
                             "#ef4444"
                           }
                           strokeWidth="3"
                           strokeLinecap="round"
-                          strokeDasharray={`${selectedApplication.similarity_score}, 100`}
+                          strokeDasharray={`${getDisplaySimilarityScore(selectedApplication.similarity_score) || 0}, 100`}
                           d="M18 2.0845
                             a 15.9155 15.9155 0 0 1 0 31.831
                             a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -556,23 +561,23 @@ const JobDetails = () => {
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-3xl font-bold text-white">
-                          {Math.round(selectedApplication.similarity_score)}%
+                          {Math.round(getDisplaySimilarityScore(selectedApplication.similarity_score) || 0)}%
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm font-semibold">
                       <TrendingUp className={`h-4 w-4 ${
-                        selectedApplication.similarity_score >= 75 ? 'text-green-500' :
-                        selectedApplication.similarity_score >= 50 ? 'text-yellow-500' :
+                        (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 75 ? 'text-green-500' :
+                        (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 50 ? 'text-yellow-500' :
                         'text-red-500'
                       }`} />
                       <span className={
-                        selectedApplication.similarity_score >= 75 ? 'text-green-700' :
-                        selectedApplication.similarity_score >= 50 ? 'text-yellow-700' :
-                        'text-red-700'
+                        (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 75 ? 'text-green-300' :
+                        (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 50 ? 'text-yellow-300' :
+                        'text-red-300'
                       }>
-                        {selectedApplication.similarity_score >= 75 ? 'Excellent Match' :
-                         selectedApplication.similarity_score >= 50 ? 'Good Match' :
+                        {(getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 75 ? 'Excellent Match' :
+                         (getDisplaySimilarityScore(selectedApplication.similarity_score) || 0) >= 50 ? 'Good Match' :
                          'Fair Match'}
                       </span>
                     </div>
@@ -592,7 +597,7 @@ const JobDetails = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border-2 border-dashed">
+                  <div className="flex flex-col items-center justify-center p-6 bg-slate-800/60 rounded-lg border-2 border-dashed border-white/20">
                     <TrendingUp className="h-8 w-8 text-white/60 mb-2" />
                     <p className="text-sm text-white/60 mb-2">No match score yet</p>
                     <Button
@@ -707,8 +712,8 @@ const JobDetails = () => {
                selectedApplication.similarity_score >= 50 && 
                selectedApplication.interview_link && (
                 <Card className="border-2 border-green-500/30 bg-green-500/10">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-white">
-                    <CardTitle className="flex items-center gap-2 text-green-700">
+                  <CardHeader className="bg-gradient-to-r from-green-500/10 to-slate-800/30">
+                    <CardTitle className="flex items-center gap-2 text-green-300">
                       <Link className="h-5 w-5" />
                       Interview Link Generated
                     </CardTitle>
@@ -727,7 +732,7 @@ const JobDetails = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-green-300 text-green-700 hover:bg-green-100"
+                        className="border-green-400/40 text-green-300 hover:bg-green-500/20"
                         onClick={() => {
                           navigator.clipboard.writeText(selectedApplication.interview_link);
                           toast({
@@ -739,7 +744,7 @@ const JobDetails = () => {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-green-600 mt-2">
+                    <p className="text-xs text-green-300/90 mt-2">
                       This link is also visible to the candidate on their portal.
                     </p>
                   </CardContent>
@@ -801,7 +806,7 @@ const JobDetails = () => {
           ) : interviewInsights ? (
             <div className="space-y-6 py-4">
               {/* Candidate Info & Overall Score */}
-              <div className="flex items-start justify-between p-6 bg-gradient-to-r from-blue-50 to-white rounded-lg border-2 border-blue-500/30">
+              <div className="flex items-start justify-between p-6 bg-gradient-to-r from-slate-800/90 to-slate-700/60 rounded-lg border-2 border-blue-500/30">
                 <div>
                   <h3 className="text-xl font-bold text-white">
                     {interviewInsights.candidate_name}
@@ -882,9 +887,9 @@ const JobDetails = () => {
               {/* Strengths & Areas for Improvement */}
               <div className="grid grid-cols-2 gap-4">
                 {interviewInsights.results?.strengths && interviewInsights.results.strengths.length > 0 && (
-                  <Card className="border-green-500/30">
+                  <Card className="bg-green-500/10 border-green-500/30">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-lg text-green-700 flex items-center gap-2">
+                      <CardTitle className="text-lg text-green-300 flex items-center gap-2">
                         <Check className="h-5 w-5" />
                         Strengths
                       </CardTitle>
@@ -927,8 +932,8 @@ const JobDetails = () => {
                   </div>
                 )}
                 {interviewInsights.results?.job_fit && (
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <h4 className="font-semibold text-purple-700 mb-1">Job Fit</h4>
+                  <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                    <h4 className="font-semibold text-purple-300 mb-1">Job Fit</h4>
                     <p className="text-sm text-white/60">{interviewInsights.results.job_fit}</p>
                   </div>
                 )}
@@ -950,7 +955,7 @@ const JobDetails = () => {
                       >
                         {/* Question Header - Always visible */}
                         <div 
-                          className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                          className="flex items-center justify-between p-4 bg-slate-800/60 cursor-pointer hover:bg-slate-700/60"
                           onClick={() => toggleQuestion(index)}
                         >
                           <div className="flex items-center gap-3 flex-1">
@@ -981,13 +986,13 @@ const JobDetails = () => {
                             {/* Full Question */}
                             <div>
                               <h5 className="text-xs font-semibold text-blue-600 uppercase mb-1">Question</h5>
-                              <p className="text-sm text-white bg-blue-500/10 p-3 rounded">{qa.question}</p>
+                              <p className="text-sm text-white bg-blue-500/10 p-3 rounded border border-blue-500/20">{qa.question}</p>
                             </div>
                             
                             {/* Candidate's Answer */}
                             <div>
                               <h5 className="text-xs font-semibold text-green-600 uppercase mb-1">Candidate's Answer</h5>
-                              <p className="text-sm text-white bg-green-500/10 p-3 rounded whitespace-pre-wrap">
+                              <p className="text-sm text-white bg-green-500/10 p-3 rounded border border-green-500/20 whitespace-pre-wrap">
                                 {qa.answer || '(No answer provided)'}
                               </p>
                             </div>
@@ -996,7 +1001,7 @@ const JobDetails = () => {
                             {qa.feedback && (
                               <div>
                                 <h5 className="text-xs font-semibold text-purple-600 uppercase mb-1">AI Evaluation Feedback</h5>
-                                <p className="text-sm text-white/60 bg-purple-50 p-3 rounded">{qa.feedback}</p>
+                                <p className="text-sm text-white/70 bg-purple-500/10 p-3 rounded border border-purple-500/20">{qa.feedback}</p>
                               </div>
                             )}
                           </div>

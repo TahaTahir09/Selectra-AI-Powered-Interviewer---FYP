@@ -380,6 +380,20 @@ export const flaskAPI = {
       answer_scores: answerScores
     });
     return response.data;
+  },
+
+  // Transcribe candidate speech audio using Flask ElevenLabs STT proxy
+  transcribeSpeech: async (audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'candidate-answer.webm');
+
+    const response = await axios.post(`${FLASK_API_URL}/stt/transcribe`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
   }
 };
 

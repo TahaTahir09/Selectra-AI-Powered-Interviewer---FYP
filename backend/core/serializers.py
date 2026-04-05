@@ -173,6 +173,49 @@ class InterviewResultsSerializer(serializers.Serializer):
         help_text="List of Q&A with scores: [{question, answer, score, feedback}]"
     )
 
+    def validate_questions_and_answers(self, value):
+        """Ensure every interview question has answer, score, and feedback for HR review."""
+        if not isinstance(value, list) or not value:
+            raise serializers.ValidationError("questions_and_answers must be a non-empty list.")
+
+        required_keys = {'question', 'answer', 'score', 'feedback'}
+        validated_rows = []
+
+        for index, row in enumerate(value):
+            if not isinstance(row, dict):
+                raise serializers.ValidationError(f"Entry {index + 1} must be an object.")
+
+            missing = required_keys - set(row.keys())
+            if missing:
+                missing_str = ', '.join(sorted(missing))
+                raise serializers.ValidationError(f"Entry {index + 1} is missing fields: {missing_str}.")
+
+            question = str(row.get('question', '')).strip()
+            answer = str(row.get('answer', '')).strip()
+            feedback = str(row.get('feedback', '')).strip()
+
+            if not question:
+                raise serializers.ValidationError(f"Entry {index + 1} question cannot be empty.")
+            if not answer:
+                raise serializers.ValidationError(f"Entry {index + 1} answer cannot be empty.")
+
+            try:
+                score = float(row.get('score'))
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(f"Entry {index + 1} score must be numeric.")
+
+            if score < 1 or score > 10:
+                raise serializers.ValidationError(f"Entry {index + 1} score must be between 1 and 10.")
+
+            validated_rows.append({
+                'question': question,
+                'answer': answer,
+                'score': score,
+                'feedback': feedback,
+            })
+
+        return validated_rows
+
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):
     """

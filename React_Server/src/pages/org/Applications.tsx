@@ -85,6 +85,11 @@ const Applications = () => {
     navigate("/org/login");
   };
 
+  const getDisplaySimilarityScore = (rawScore: number | null | undefined) => {
+    if (rawScore === null || rawScore === undefined) return null;
+    return Math.min(Math.max(rawScore * 10, 0), 100);
+  };
+
   const getTotalApplications = () => {
     return Object.values(applicationsByJob).reduce((sum, apps) => sum + apps.length, 0);
   };
@@ -185,7 +190,7 @@ const Applications = () => {
                   ? Math.round(
                       applications
                         .filter(app => app.similarity_score !== null && app.similarity_score !== undefined)
-                        .reduce((sum, app) => sum + app.similarity_score, 0) / 
+                        .reduce((sum, app) => sum + (getDisplaySimilarityScore(app.similarity_score) || 0), 0) / 
                       applications.filter(app => app.similarity_score !== null && app.similarity_score !== undefined).length
                     )
                   : 0;
@@ -243,17 +248,17 @@ const Applications = () => {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3 mb-2">
                                     <h3 className="font-bold text-lg text-white">{app.candidate_name}</h3>
-                                    {app.similarity_score !== null && app.similarity_score !== undefined && (
+                                    {getDisplaySimilarityScore(app.similarity_score) !== null && (
                                       <Badge 
                                         variant="outline" 
                                         className={`text-sm font-semibold ${
-                                          app.similarity_score >= 75 ? 'bg-green-50 text-green-700 border-green-500/30' :
-                                          app.similarity_score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-500/30' :
+                                          (getDisplaySimilarityScore(app.similarity_score) || 0) >= 75 ? 'bg-green-50 text-green-700 border-green-500/30' :
+                                          (getDisplaySimilarityScore(app.similarity_score) || 0) >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-500/30' :
                                           'bg-red-50 text-red-700 border-red-500/30'
                                         }`}
                                       >
                                         <TrendingUp className="h-3 w-3 mr-1" />
-                                        {Math.round(app.similarity_score)}% Match
+                                        {Math.round(getDisplaySimilarityScore(app.similarity_score) || 0)}% Match
                                       </Badge>
                                     )}
                                     <Badge 

@@ -66,6 +66,11 @@ const OrgDashboard = () => {
     navigate("/org/login");
   };
 
+  const getDisplaySimilarityScore = (rawScore: number | null | undefined) => {
+    if (rawScore === null || rawScore === undefined) return null;
+    return Math.min(Math.max(rawScore * 10, 0), 100);
+  };
+
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Sidebar 
@@ -233,17 +238,17 @@ const OrgDashboard = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-bold text-lg text-white">{app.candidate_name}</h3>
-                        {app.similarity_score !== null && app.similarity_score !== undefined && (
+                        {getDisplaySimilarityScore(app.similarity_score) !== null && (
                           <Badge 
                             variant="outline" 
                             className={`text-sm font-semibold ${
-                              app.similarity_score >= 75 ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                              app.similarity_score >= 50 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                              (getDisplaySimilarityScore(app.similarity_score) || 0) >= 75 ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                              (getDisplaySimilarityScore(app.similarity_score) || 0) >= 50 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
                               'bg-red-500/20 text-red-400 border-red-500/30'
                             }`}
                           >
                             <TrendingUp className="h-3 w-3 mr-1" />
-                            {Math.round(app.similarity_score)}% Match
+                            {Math.round(getDisplaySimilarityScore(app.similarity_score) || 0)}% Match
                           </Badge>
                         )}
                         <Badge 

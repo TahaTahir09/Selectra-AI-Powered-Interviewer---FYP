@@ -12,6 +12,7 @@ import json
 import uuid
 from .models import OrganizationDetails, JobPost, Application, Interview
 from .cv_parser import cv_parser
+from .email_service import send_interview_invitation_email, send_rejection_email
 from .serializers import (
     OrganizationDetailsSerializer,
     OrganizationDetailsCreateSerializer,
@@ -28,6 +29,18 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+def get_application_by_interview_token(interview_token):
+    """Resolve interview token to an application using exact token match from interview_link."""
+    if not interview_token:
+        return None
+
+    for application in Application.objects.exclude(interview_link__isnull=True).exclude(interview_link=''):
+        token = str(application.interview_link).rstrip('/').split('/')[-1]
+        if token == interview_token:
+            return application
+    return None
 
 
 def calculate_similarity_score(cv_text, job_description, job_id=None):
@@ -74,7 +87,9 @@ def calculate_similarity_score(cv_text, job_description, job_id=None):
             score = compare_response.json().get('score')
             # Convert to percentage (0-100)
             final_score = round(score * 100, 2) if score is not None else None
-            print(f"Similarity score calculated: {final_score}%")
+            print(f"Similarity score calculated: {final_score}% (raw: {score})")
+            if final_score is not None and final_score < 10:
+                print(f"⚠ WARNING: Very low similarity score. Check if CV/job description text is adequate.")
             return final_score
         else:
             print(f"Failed to compare CV: {compare_response.status_code}, Response: {compare_response.text}")
@@ -384,6 +399,38 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                             print(f"✓ Interview link generated: {interview_link}")
                         application.save()
                         print(f"✓ Similarity score saved: {similarity}%")
+                        
+                        # Send email notification based on similarity score
+                        print(f"\n=== Sending notification email ===")
+                        if similarity >= 50:
+                            # Send interview invitation
+                            job_title = application.job_post.job_title
+                            org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username
+                            email_sent = send_interview_invitation_email(
+                                application.candidate_email,
+                                application.candidate_name,
+                                job_title,
+                                interview_link,
+                                org_name
+                            )
+                            if email_sent:
+                                print(f"✓ Interview invitation email sent to {application.candidate_email}")
+                            else:
+                                print(f"✗ Failed to send invitation email to {application.candidate_email}")
+                        else:
+                            # Send rejection email
+                            job_title = application.job_post.job_title
+                            org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username
+                            email_sent = send_rejection_email(
+                                application.candidate_email,
+                                application.candidate_name,
+                                job_title,
+                                org_name
+                            )
+                            if email_sent:
+                                print(f"✓ Rejection email sent to {application.candidate_email}")
+                            else:
+                                print(f"✗ Failed to send rejection email to {application.candidate_email}")
                     else:
                         print("✗ Similarity calculation returned None")
                 else:
@@ -493,6 +540,38 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                             print(f"✓ Interview link generated: {interview_link}")
                         application.save()
                         print(f"✓ Similarity score from Flask: {application.similarity_score}%")
+                        
+                        # Send email notification based on similarity score
+                        print(f"\n=== Sending notification email ===")
+                        if application.similarity_score >= 50:
+                            # Send interview invitation
+                            job_title = application.job_post.job_title if application.job_post else "Position"
+                            org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username if application.job_post else "Selectra AI"
+                            email_sent = send_interview_invitation_email(
+                                application.candidate_email,
+                                application.candidate_name,
+                                job_title,
+                                interview_link,
+                                org_name
+                            )
+                            if email_sent:
+                                print(f"✓ Interview invitation email sent to {application.candidate_email}")
+                            else:
+                                print(f"✗ Failed to send invitation email to {application.candidate_email}")
+                        else:
+                            # Send rejection email
+                            job_title = application.job_post.job_title if application.job_post else "Position"
+                            org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username if application.job_post else "Selectra AI"
+                            email_sent = send_rejection_email(
+                                application.candidate_email,
+                                application.candidate_name,
+                                job_title,
+                                org_name
+                            )
+                            if email_sent:
+                                print(f"✓ Rejection email sent to {application.candidate_email}")
+                            else:
+                                print(f"✗ Failed to send rejection email to {application.candidate_email}")
                 else:
                     print(f"⚠ Failed to save application to ChromaDB: {response.status_code}")
                     print(f"Response: {response.text}")
@@ -646,11 +725,44 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if similarity is not None:
             application.similarity_score = similarity
             # Generate interview link if score >= 50%
+            interview_link = None
             if similarity >= 50 and not application.interview_link:
                 interview_link = generate_interview_link(application)
                 if interview_link:
                     application.interview_link = interview_link
             application.save()
+            
+            # Send email notification based on similarity score
+            print(f"\n=== Sending notification email (recalculated) ===")
+            if similarity >= 50:
+                # Send interview invitation
+                job_title = application.job_post.job_title
+                org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username
+                email_sent = send_interview_invitation_email(
+                    application.candidate_email,
+                    application.candidate_name,
+                    job_title,
+                    interview_link or application.interview_link,
+                    org_name
+                )
+                if email_sent:
+                    print(f"✓ Interview invitation email sent to {application.candidate_email}")
+                else:
+                    print(f"✗ Failed to send invitation email to {application.candidate_email}")
+            else:
+                # Send rejection email
+                job_title = application.job_post.job_title
+                org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username
+                email_sent = send_rejection_email(
+                    application.candidate_email,
+                    application.candidate_name,
+                    job_title,
+                    org_name
+                )
+                if email_sent:
+                    print(f"✓ Rejection email sent to {application.candidate_email}")
+                else:
+                    print(f"✗ Failed to send rejection email to {application.candidate_email}")
             
             serializer = self.get_serializer(application)
             return Response({
@@ -816,28 +928,56 @@ def save_interview_results(request):
     
     # Find application by interview link token
     try:
-        application = Application.objects.filter(
-            interview_link__icontains=interview_token
-        ).first()
+        application = get_application_by_interview_token(interview_token)
         
         if not application:
             return Response(
                 {'error': 'Application not found for this interview token'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        if application.interview_completed_at or application.interview_results:
+            return Response(
+                {
+                    'error': 'Interview already completed. Re-attempt is not allowed.',
+                    'application_id': application.id,
+                    'interview_completed_at': application.interview_completed_at,
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        questions_and_answers = data.get('questions_and_answers', [])
+        question_scores = [float(item.get('score', 0)) for item in questions_and_answers]
+        average_question_score = round(sum(question_scores) / len(question_scores), 2) if question_scores else 0
+
+        report_generated_at = timezone.now()
         
         # Store interview results
         application.interview_results = {
             'overall_score': data.get('overall_score'),
+            'average_question_score': average_question_score,
             'recommendation': data.get('recommendation'),
             'summary': data.get('summary'),
             'strengths': data.get('strengths', []),
             'areas_for_improvement': data.get('areas_for_improvement', []),
             'cv_verification': data.get('cv_verification', ''),
             'job_fit': data.get('job_fit', ''),
-            'questions_and_answers': data.get('questions_and_answers', [])
+            'questions_and_answers': questions_and_answers,
+            'report_for_hr': {
+                'candidate_name': application.candidate_name,
+                'candidate_email': application.candidate_email,
+                'job_title': application.job_post.job_title if application.job_post else 'Unknown',
+                'question_count': len(questions_and_answers),
+                'generated_at': report_generated_at.isoformat(),
+                'llm_evaluation': {
+                    'overall_score': data.get('overall_score'),
+                    'recommendation': data.get('recommendation'),
+                    'summary': data.get('summary'),
+                },
+            },
         }
-        application.interview_completed_at = timezone.now()
+        application.interview_completed_at = report_generated_at
+        application.status = 'reviewed'
         application.save()
         
         return Response({
@@ -861,9 +1001,7 @@ def get_interview_results(request, interview_token):
     Returns detailed Q&A with per-question scores.
     """
     try:
-        application = Application.objects.filter(
-            interview_link__icontains=interview_token
-        ).first()
+        application = get_application_by_interview_token(interview_token)
         
         if not application:
             return Response(
