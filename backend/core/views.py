@@ -108,13 +108,13 @@ def calculate_similarity_score(cv_text, job_description, job_id=None):
 
 def generate_interview_link(application):
     """
-    Generate a unique interview link for an application if similarity score >= 50%.
+    Generate a unique interview link for an application if similarity score >= 40%.
     Returns the interview link or None if score is below threshold.
     """
     if application.similarity_score is None:
         return None
     
-    if application.similarity_score >= 50:
+    if application.similarity_score >= 40:
         # Generate a unique interview token
         interview_token = str(uuid.uuid4())
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:8080')
@@ -392,7 +392,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     similarity = calculate_similarity_score(cv_text, job_description, job_id=job_id)
                     if similarity is not None:
                         application.similarity_score = similarity
-                        # Generate interview link if score >= 50%
+                        # Generate interview link if score >= 40%
                         interview_link = generate_interview_link(application)
                         if interview_link:
                             application.interview_link = interview_link
@@ -402,7 +402,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                         
                         # Send email notification based on similarity score
                         print(f"\n=== Sending notification email ===")
-                        if similarity >= 50:
+                        if similarity >= 40:
                             # Send interview invitation
                             job_title = application.job_post.job_title
                             org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username
@@ -533,7 +533,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                     if flask_similarity is not None and application.similarity_score is None:
                         # Convert to percentage (0-100)
                         application.similarity_score = round(flask_similarity * 100, 2)
-                        # Generate interview link if score >= 50%
+                        # Generate interview link if score >= 40%
                         interview_link = generate_interview_link(application)
                         if interview_link:
                             application.interview_link = interview_link
@@ -543,7 +543,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                         
                         # Send email notification based on similarity score
                         print(f"\n=== Sending notification email ===")
-                        if application.similarity_score >= 50:
+                        if application.similarity_score >= 40:
                             # Send interview invitation
                             job_title = application.job_post.job_title if application.job_post else "Position"
                             org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username if application.job_post else "Selectra AI"
@@ -724,9 +724,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         
         if similarity is not None:
             application.similarity_score = similarity
-            # Generate interview link if score >= 50%
+            # Generate interview link if score >= 40%
             interview_link = None
-            if similarity >= 50 and not application.interview_link:
+            if similarity >= 40 and not application.interview_link:
                 interview_link = generate_interview_link(application)
                 if interview_link:
                     application.interview_link = interview_link
@@ -734,7 +734,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             
             # Send email notification based on similarity score
             print(f"\n=== Sending notification email (recalculated) ===")
-            if similarity >= 50:
+            if similarity >= 40:
                 # Send interview invitation
                 job_title = application.job_post.job_title
                 org_name = application.job_post.organization.get_full_name() or application.job_post.organization.username

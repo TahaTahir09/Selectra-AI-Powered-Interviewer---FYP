@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
 from django.utils import timezone
 
 
@@ -50,10 +49,10 @@ class JobPost(models.Model):
     )
     job_title = models.CharField(max_length=255)
     job_description = models.TextField()
-    required_skills = ArrayField(
-        models.CharField(max_length=100),
+    required_skills = models.JSONField(
         default=list,
-        blank=True
+        blank=True,
+        help_text="List of required skills for the job"
     )
     experience_required = models.CharField(max_length=255, blank=True, null=True)
     qualification = models.CharField(max_length=255, blank=True, null=True)
@@ -63,10 +62,10 @@ class JobPost(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     salary_range = models.CharField(max_length=100, blank=True, null=True)
     application_link = models.URLField(blank=True, null=True)
-    pre_assessment_questions = ArrayField(
-        models.TextField(),
+    pre_assessment_questions = models.JSONField(
         default=list,
-        blank=True
+        blank=True,
+        help_text="Pre-assessment questions for candidates"
     )
     status = models.CharField(
         max_length=20,
