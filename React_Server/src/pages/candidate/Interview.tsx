@@ -4,13 +4,15 @@ import {
   Play, Loader2, Clock, Send, CheckCircle, 
   AlertCircle, Volume2, VolumeX,
   Briefcase, FileText, ArrowRight, Mic, MessageSquare,
-  Award, Target, ChevronRight, Sparkles, Bot, StopCircle
+  Award, Target, ChevronRight, Sparkles, Bot, StopCircle,
+  Camera, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useInterviewRecording } from "@/hooks/useInterviewRecording";
 import { applicationAPI, flaskAPI, interviewResultsAPI } from "@/services/api";
 
 interface Message {
@@ -49,6 +51,15 @@ const Interview = () => {
   const { id } = useParams();
   const { toast } = useToast();
   
+  // Recording hook - camera only
+  const {
+    recordingState,
+    startCameraRecording,
+    stopCameraRecording,
+    cameraStreamRef,
+    cleanup: cleanupRecording,
+  } = useInterviewRecording();
+  
   // Application data
   const [application, setApplication] = useState<any>(null);
   const [jobDescription, setJobDescription] = useState('');
@@ -74,6 +85,7 @@ const Interview = () => {
   
   // Refs
   const answerRef = useRef<HTMLTextAreaElement>(null);
+  const videoDisplayRef = useRef<HTMLVideoElement>(null);
   
   // Audio playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -401,6 +413,13 @@ const Interview = () => {
     }
   }, [id]);
 
+  // Setup camera preview when in ready or answering stage
+  useEffect(() => {
+    if ((stage === 'ready' || stage === 'answering') && videoDisplayRef.current && cameraStreamRef.current) {
+      videoDisplayRef.current.srcObject = cameraStreamRef.current;
+    }
+  }, [stage, cameraStreamRef]);
+
   // Timer effect
   useEffect(() => {
     if (stage === 'answering' && timeLeft > 0) {
@@ -433,8 +452,9 @@ const Interview = () => {
       }
       clearQuestionStreamTimer();
       cleanupMicrophoneResources();
+      cleanupRecording();
     };
-  }, [cleanupMicrophoneResources, clearQuestionStreamTimer]);
+  }, [cleanupMicrophoneResources, clearQuestionStreamTimer, cleanupRecording]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -598,6 +618,9 @@ const Interview = () => {
   // Complete the interview
   const completeInterview = async (lastAnswer?: string) => {
     try {
+      // Stop camera recording
+      const cameraBlob = recordingState.isCameraRecording ? await stopCameraRecording() : null;
+
       const allMessages = lastAnswer 
         ? conversationHistory.concat([{ role: 'candidate', content: lastAnswer, timestamp: new Date() }])
         : conversationHistory;
@@ -611,7 +634,7 @@ const Interview = () => {
       
       // Save to Django
       try {
-        await interviewResultsAPI.saveResults({
+        const resultsData: any = {
           interview_token: id || '',
           overall_score: finalEval.overall_score || Math.round(answerScores.reduce((a, b) => a + b.score, 0) / answerScores.length),
           recommendation: finalEval.recommendation || 'consider',
@@ -621,7 +644,29 @@ const Interview = () => {
           cv_verification: finalEval.cv_verification || '',
           job_fit: finalEval.job_fit || '',
           questions_and_answers: questionScores
-        });
+        };
+
+        // Upload camera recording if available
+        if (cameraBlob) {
+          const formData = new FormData();
+          formData.append('camera_recording', cameraBlob, 'camera.webm');
+          formData.append('interview_token', id || '');
+          
+          try {
+            await fetch(`${import.meta.env.VITE_API_URL}/core/interview-recordings/`, {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`,
+              },
+            });
+          } catch (recordingError) {
+            console.warn('Failed to upload camera recording:', recordingError);
+            // Continue anyway - recording not critical
+          }
+        }
+
+        await interviewResultsAPI.saveResults(resultsData);
       } catch (saveError) {
         console.error('Failed to save interview results:', saveError);
 
@@ -637,16 +682,12 @@ const Interview = () => {
         }
       }
       
-      localStorage.setItem(`interview_result_${id}`, JSON.stringify({
-        ...finalEval,
-        messages: allMessages,
-        application: application,
-        questions_and_answers: questionScores
-      }));
+      // Do NOT store results in localStorage - results are only for organizations
+      // This ensures candidates cannot view their own results
       
       setStage('completed');
       
-      setTimeout(() => navigate(`/interview/result/${id}`), 3000);
+      setTimeout(() => navigate(`/interview/thank-you/${id}`), 3000);
     } catch (error) {
       console.error('Error completing interview:', error);
     }
@@ -794,31 +835,83 @@ const Interview = () => {
   if (stage === 'ready') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full bg-white/10 backdrop-blur-xl border-white/20 p-8 text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 mx-auto flex items-center justify-center mb-6 animate-pulse">
-            <Briefcase className="h-12 w-12 text-white" />
+        <Card className="max-w-2xl w-full bg-white/10 backdrop-blur-xl border-white/20 p-8">
+          {/* Camera Preview */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <Camera className="h-5 w-5 text-blue-400" />
+              Camera Preview
+            </h3>
+            <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+              <video
+                ref={videoDisplayRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {recordingState.isCameraRecording && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-600 px-3 py-1 rounded-full text-white text-sm">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  Recording
+                </div>
+              )}
+              {recordingState.cameraError && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                  <div className="text-center text-red-400">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-2" />
+                    <p className="text-sm">{recordingState.cameraError}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Start?</h2>
-          <p className="text-white/60 mb-8">
-            Your interview for <span className="text-white font-medium">{application?.job_post?.job_title}</span> is about to begin.
-          </p>
-          
+
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-white mb-4">Ready to Start?</h2>
+            <p className="text-white/60 mb-4">
+              Your interview for <span className="text-white font-medium">{application?.job_post?.job_title}</span> is about to begin.
+            </p>
+          </div>
+
+          {/* Camera Recording Control */}
+          <div className="bg-white/5 rounded-lg p-4 mb-6">
+            <p className="text-sm text-white/60 mb-3">Camera Recording:</p>
+            <Button
+              onClick={recordingState.isCameraRecording ? stopCameraRecording : startCameraRecording}
+              variant={recordingState.isCameraRecording ? "destructive" : "secondary"}
+              className="w-full flex items-center justify-center gap-2"
+              disabled={isLoadingQuestion}
+            >
+              <Camera className="h-4 w-4" />
+              {recordingState.isCameraRecording ? 'Stop Camera' : 'Start Camera'}
+            </Button>
+            {recordingState.cameraError && (
+              <p className="text-red-400 text-xs mt-2">{recordingState.cameraError}</p>
+            )}
+          </div>
+
           <div className="space-y-4">
             <Button 
               size="lg"
               onClick={handleStartInterview}
-              disabled={isLoadingQuestion}
-              className="w-full py-6 text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border-0 rounded-xl"
+              disabled={isLoadingQuestion || !recordingState.isCameraRecording}
+              className="w-full py-6 text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border-0 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoadingQuestion ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Generating Question...
                 </>
+              ) : !recordingState.isCameraRecording ? (
+                <>
+                  <AlertCircle className="mr-2 h-5 w-5" />
+                  Please Start Camera Recording
+                </>
               ) : (
                 <>
                   <Play className="mr-2 h-5 w-5" />
-                  Start Interview
+                  Begin Interview
                 </>
               )}
             </Button>
@@ -826,7 +919,7 @@ const Interview = () => {
             <Button 
               variant="ghost"
               onClick={() => setStage('intro')}
-              className="text-white/60 hover:text-white hover:bg-white/10"
+              className="w-full text-white/60 hover:text-white hover:bg-white/10"
             >
               Go Back
             </Button>
@@ -920,7 +1013,7 @@ const Interview = () => {
       </div>
 
       {/* Main Content - Single Question Focus */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-6 relative">
         <div className="max-w-3xl w-full">
           
           {/* Loading Question */}
@@ -938,12 +1031,36 @@ const Interview = () => {
           {stage === 'answering' && (
             <div className="space-y-6">
               {/* Timer */}
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-4">
                 <div className={`px-6 py-3 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center gap-3 ${timeLeft <= 30 ? 'animate-pulse' : ''}`}>
                   <Clock className={`h-5 w-5 ${getTimerColor()}`} />
                   <span className={`font-mono text-2xl font-bold ${getTimerColor()}`}>
                     {formatTime(timeLeft)}
                   </span>
+                </div>
+                
+                {/* Recording Status Indicator */}
+                {recordingState.isCameraRecording && (
+                  <div className="px-3 py-3 rounded-full bg-red-600/30 backdrop-blur-sm border border-red-500/50 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    <Camera className="h-4 w-4 text-red-400" />
+                    <span className="text-xs text-red-400 font-medium">Recording</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Preview - Picture in Picture Style */}
+              <div className="absolute top-20 right-6 w-48 h-36 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg z-20">
+                <video
+                  ref={videoDisplayRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs text-white/80 flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  Camera On
                 </div>
               </div>
 

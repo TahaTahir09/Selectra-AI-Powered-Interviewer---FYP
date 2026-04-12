@@ -7,6 +7,7 @@ from .views import (
     InterviewViewSet,
     save_interview_results,
     get_interview_results,
+    upload_interview_recordings,
 )
 from .cv_api import parse_cv_api, parse_cv_text, test_cv_endpoint
 
@@ -23,4 +24,5 @@ urlpatterns = [
     path('parse-cv-text/', parse_cv_text, name='parse-cv-text'),
     path('interview-results/', save_interview_results, name='save-interview-results'),
     path('interview-results/<str:interview_token>/', get_interview_results, name='get-interview-results'),
+    path('interview-recordings/', upload_interview_recordings, name='upload-interview-recordings'),
 ]

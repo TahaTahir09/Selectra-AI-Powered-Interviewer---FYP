@@ -390,9 +390,10 @@ Return JSON:
     ) -> Dict[str, Any]:
         """Evaluate a single answer considering CV claims"""
         
-        system_prompt = """You are an expert technical interviewer evaluating a candidate's response.
-Critically assess if the answer demonstrates the technical knowledge and skills claimed in their CV.
-Be fair but verify their expertise matches what they claimed."""
+        system_prompt = """You are a fair and professional technical interviewer evaluating a candidate's response.
+Assess if the answer demonstrates reasonable technical knowledge related to their CV claims.
+Be constructive and give credit for relevant knowledge, effort, and learning mindset.
+Focus on potential and willingness to learn, not just perfect mastery."""
         
         user_prompt = f"""Job Requirements:
 {job_description[:800]}
@@ -407,17 +408,18 @@ Candidate's Answer:
 {answer}
 
 Evaluate this answer on a scale of 1-10 considering:
-1. TECHNICAL ACCURACY - Does the answer show real knowledge of the technologies mentioned?
-2. DEPTH - Does it go beyond surface-level understanding?
-3. CV VERIFICATION - Does the answer support their claimed skills?
-4. JOB RELEVANCE - Is it relevant to the role requirements?
-5. CLARITY - Is the communication clear and professional?
+1. TECHNICAL UNDERSTANDING - Shows reasonable grasp of the topic?
+2. RELEVANCE - Addresses the question appropriately?
+3. COMMUNICATION - Clear and professional communication?
+4. EFFORT & REASONING - Shows thinking process and effort?
+5. ALIGNMENT WITH CV - Reasonably aligns with their claimed background?
 
 SCORING GUIDE:
-- 8-10: Excellent - demonstrates deep knowledge matching CV claims
-- 6-7: Good - shows solid understanding, some depth
-- 4-5: Average - basic knowledge, lacks technical depth
-- 1-3: Poor - doesn't demonstrate claimed skills, vague answers
+- 8-10: Excellent - clear knowledge, well-articulated, strong alignment
+- 6-7: Good - demonstrates solid understanding, good effort
+- 5-6: Satisfactory - shows reasonable understanding, adequate answer
+- 3-4: Fair - basic understanding, some gaps but shows effort
+- 1-2: Poor - minimal understanding or no coherent response
 
 Return JSON:
 {{"score": 7, "feedback": "Brief assessment", "strengths": ["specific strength"], "improvements": ["specific area to improve"], "cv_verified": true}}
@@ -432,8 +434,11 @@ Return ONLY the JSON."""
             if score is not None:
                 try:
                     score = max(1, min(10, int(score)))
+                    # Apply a slight boost for completion (be more encouraging)
+                    if score < 5:
+                        score = max(score, min(score + 1, 5))  # Minimum boost to 5 for attempt
                 except (ValueError, TypeError):
-                    score = 5
+                    score = 6
                 return {
                     'success': True,
                     'score': score,
@@ -444,9 +449,9 @@ Return ONLY the JSON."""
         
         return {
             'success': True,
-            'score': 5,
-            'feedback': 'Answer recorded.',
-            'strengths': [],
+            'score': 6,
+            'feedback': 'Answer recorded. You demonstrated effort in responding to the question.',
+            'strengths': ['Provided a response to the interview question'],
             'improvements': [],
             'fallback': True
         }
@@ -460,9 +465,10 @@ Return ONLY the JSON."""
     ) -> Dict[str, Any]:
         """Evaluate the complete interview and provide overall assessment"""
         
-        system_prompt = """You are an expert technical interviewer providing a final assessment.
-Your evaluation should focus on whether the candidate actually demonstrated the skills they claim on their CV.
-Compare what they said in the interview with what's on their resume."""
+        system_prompt = """You are a fair technical interviewer providing a holistic final assessment.
+Your evaluation should assess the candidate's overall fit based on demonstrated understanding and communication.
+Consider their effort, growth potential, and how they compare to typical candidates.
+Be encouraging while being honest about their capabilities."""
         
         # Format conversation
         conversation_text = "\n".join([
@@ -488,16 +494,19 @@ Complete Interview Transcript:
 Average Answer Score: {avg_score:.1f}/10
 
 Provide a comprehensive final evaluation considering:
-1. Did the candidate demonstrate the technical skills claimed on their CV?
-2. How well do their qualifications match the job requirements?
-3. Did they show depth of knowledge or just surface-level understanding?
-4. Would they be a good fit for this role?
+1. What technical understanding did the candidate demonstrate?
+2. How well do their qualifications align with the job requirements?
+3. Did they show good communication and reasoning?
+4. What is their learning potential and growth trajectory?
+5. Overall fit for this role considering all factors?
 
-SCORING:
-- 8-10: Excellent - clearly demonstrated expertise matching CV and job needs
-- 6-7: Good - showed solid skills, minor gaps
-- 4-5: Average - some skills verified, some concerns
-- 1-3: Poor - did not demonstrate claimed skills
+SCORING GUIDANCE:
+- 8-10: Excellent - Strong technical understanding, excellent fit
+- 7-8: Very Good - Good understanding, strong candidate
+- 6-7: Good - Solid foundation, good potential
+- 5-6: Satisfactory - Reasonable match, trainable
+- 4-5: Fair - Some gaps but worth developing
+- Below 4: Not a fit for this role
 
 Return JSON:
 {{
@@ -507,7 +516,7 @@ Return JSON:
     "cv_verification": "Did answers support CV claims? (verified/partial/unverified)",
     "job_fit": "How well they match job requirements (excellent/good/fair/poor)",
     "recommendation": "recommend|consider|not_recommend",
-    "summary": "2-3 sentence assessment focusing on technical capability and CV accuracy"
+    "summary": "2-3 sentence assessment focusing on candidate's capabilities and fit"
 }}
 
 Return ONLY the JSON."""
@@ -521,6 +530,8 @@ Return ONLY the JSON."""
             if score is not None:
                 try:
                     score = max(1, min(10, int(score)))
+                    # Apply a boost for completion to be more encouraging\n                    if score < 5:
+                        score = max(score, min(score + 1, 5))  # Minimum boost to 5
                 except (ValueError, TypeError):
                     score = round(avg_score)
                 return {
@@ -535,17 +546,23 @@ Return ONLY the JSON."""
                     'answer_scores': answer_scores
                 }
         
-        # Fallback evaluation
-        recommendation = 'recommend' if avg_score >= 7 else ('consider' if avg_score >= 5 else 'not_recommend')
+        # Fallback evaluation - more lenient thresholds
+        if avg_score >= 7:
+            recommendation = 'recommend'
+        elif avg_score >= 5.5:
+            recommendation = 'consider'
+        else:
+            recommendation = 'consider' if avg_score >= 4 else 'not_recommend'
+            
         return {
             'success': True,
-            'overall_score': round(avg_score),
-            'strengths': ['Completed the interview'],
-            'areas_for_improvement': ['Review technical depth in answers'],
+            'overall_score': max(round(avg_score), 5),
+            'strengths': ['Engaged in the interview process', 'Demonstrated communication skills'],
+            'areas_for_improvement': ['Continue building technical skills', 'Review specific job requirements'],
             'cv_verification': 'partial',
-            'job_fit': 'fair',
+            'job_fit': 'fair' if avg_score >= 5 else 'fair',
             'recommendation': recommendation,
-            'summary': f'Interview completed with average score of {avg_score:.1f}/10. Review individual responses for detailed assessment.',
+            'summary': f'Interview completed with average score of {avg_score:.1f}/10. Candidate demonstrated effort and communication skills. Review individual responses for detailed technical assessment.',
             'answer_scores': answer_scores,
             'fallback': True
         }

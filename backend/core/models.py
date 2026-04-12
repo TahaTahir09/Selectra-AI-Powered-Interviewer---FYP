@@ -142,6 +142,20 @@ class Application(models.Model):
     )
     interview_completed_at = models.DateTimeField(null=True, blank=True, help_text="When the AI interview was completed")
     
+    # Recording storage
+    camera_recording = models.FileField(
+        upload_to='interview_recordings/camera/', 
+        null=True, 
+        blank=True,
+        help_text="Candidate's camera recording during interview"
+    )
+    screen_recording = models.FileField(
+        upload_to='interview_recordings/screen/', 
+        null=True, 
+        blank=True,
+        help_text="Screen recording during interview"
+    )
+    
     class Meta:
         db_table = 'applications'
         verbose_name = 'Application'

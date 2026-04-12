@@ -17,6 +17,7 @@ import AllJobs from "./pages/org/AllJobs";
 import JobDetails from "./pages/org/JobDetails";
 import OrgProfile from "./pages/org/Profile";
 import Applications from "./pages/org/Applications";
+import InterviewResults from "./pages/org/InterviewResults";
 import CandidateLanding from "./pages/candidate/Landing";
 import CandidateRegister from "./pages/candidate/Register";
 import CandidateLogin from "./pages/candidate/Login";
@@ -26,6 +27,7 @@ import MyApplications from "./pages/candidate/MyApplications";
 import Apply from "./pages/candidate/Apply";
 import Interview from "./pages/candidate/Interview";
 import Result from "./pages/candidate/Result";
+import ThankYou from "./pages/candidate/ThankYou";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,11 @@ const App = () => (
                 <Applications />
               </ProtectedRoute>
             } />
+            <Route path="/org/interview-results/:interview_token" element={
+              <ProtectedRoute allowedUserType="organization">
+                <InterviewResults />
+              </ProtectedRoute>
+            } />
             <Route path="/org/profile" element={
               <ProtectedRoute allowedUserType="organization">
                 <OrgProfile />
@@ -112,6 +119,9 @@ const App = () => (
               <ProtectedRoute allowedUserType="candidate">
                 <Interview />
               </ProtectedRoute>
+            } />
+            <Route path="/interview/thank-you/:id" element={
+              <ThankYou />
             } />
             <Route path="/interview/result/:id" element={
               <ProtectedRoute allowedUserType="candidate">

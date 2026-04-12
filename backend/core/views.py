@@ -995,18 +995,35 @@ def save_interview_results(request):
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def get_interview_results(request, interview_token):
     """
     Get interview results for HR review.
     Returns detailed Q&A with per-question scores.
+    Only accessible to organization users who own the job post.
     """
     try:
+        # Only organizations can view results
+        if request.user.user_type != 'organization':
+            return Response(
+                {'error': 'Interview results are only available to organizations. Candidates cannot view results.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         application = get_application_by_interview_token(interview_token)
         
         if not application:
             return Response(
                 {'error': 'Application not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if the requesting user is from the organization that owns this job
+        if application.job_post.organization_id != request.user.id:
+            return Response(
+                {'error': 'You do not have permission to view this interview result.'},
+                status=status.HTTP_403_FORBIDDEN
             )
         
         if not application.interview_results:
@@ -1021,11 +1038,60 @@ def get_interview_results(request, interview_token):
             'candidate_email': application.candidate_email,
             'job_title': application.job_post.job_title if application.job_post else 'Unknown',
             'interview_completed_at': application.interview_completed_at,
-            'results': application.interview_results
+            'results': application.interview_results,
+            'organization_only': True
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
         return Response(
             {'error': f'Failed to get interview results: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def upload_interview_recordings(request):
+    """
+    Upload interview recordings (camera and/or screen).
+    
+    Accepts multipart form data with:
+    - interview_token: The unique interview token
+    - camera_recording: (optional) Camera video file
+    - screen_recording: (optional) Screen recording file
+    """
+    try:
+        interview_token = request.POST.get('interview_token')
+        if not interview_token:
+            return Response(
+                {'error': 'interview_token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        application = get_application_by_interview_token(interview_token)
+        if not application:
+            return Response(
+                {'error': 'Application not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Save camera recording if provided
+        if 'camera_recording' in request.FILES:
+            camera_file = request.FILES['camera_recording']
+            application.camera_recording.save(f'camera_{interview_token}.webm', camera_file)
+        
+        # Save screen recording if provided
+        if 'screen_recording' in request.FILES:
+            screen_file = request.FILES['screen_recording']
+            application.screen_recording.save(f'screen_{interview_token}.webm', screen_file)
+        
+        application.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Recordings uploaded successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to upload recordings: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

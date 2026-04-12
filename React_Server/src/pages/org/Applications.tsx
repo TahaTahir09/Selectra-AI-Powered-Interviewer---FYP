@@ -281,6 +281,16 @@ const Applications = () => {
                                   </div>
                                 </div>
                                 <Button 
+                                  className="bg-purple-600 hover:bg-purple-700" 
+                                  size="sm"
+                                  onClick={() => {
+                                    const token = app.interview_link.split('/').pop();
+                                    navigate(`/org/interview-results/${token}`);
+                                  }}
+                                >
+                                  Interview Results
+                                </Button>
+                                <Button 
                                   className="bg-blue-500 hover:bg-blue-600" 
                                   size="sm"
                                   onClick={() => navigate(`/org/job/${job.id}`)}
